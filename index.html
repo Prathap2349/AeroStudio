@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air Draw - Real-Time Hand Tracking</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Background / Media Display -->
+    <div class="media-container" id="media-container">
+        <video class="input_video" id="webcam" autoplay playsinline></video>
+        <canvas class="output_canvas" id="canvas"></canvas>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="overlay">
+        <div class="loader"></div>
+        <p>Initializing MediaPipe Hands...</p>
+    </div>
+
+    <!-- Gesture Hint -->
+    <div id="gesture-hint" class="hint-overlay hidden">
+        ☝️ Index finger = Draw | 🤏 Pinch = Move | ✋ Open hand = Idle
+    </div>
+
+    <!-- Right Panel -->
+    <aside class="panel" id="ui-panel">
+        <h1 class="panel-header">AIR DRAW</h1>
+
+        <!-- 1. Color Palette -->
+        <div class="control-group">
+            <label>COLOR</label>
+            <div class="color-palette" id="color-palette">
+                <!-- Generated via JS -->
+            </div>
+        </div>
+
+        <!-- 2. Thickness Slider -->
+        <div class="control-group">
+            <label for="thickness">THICKNESS: <span id="thickness-val">6px</span></label>
+            <input type="range" id="thickness" min="2" max="30" value="6">
+        </div>
+
+        <!-- 3. Glow Slider -->
+        <div class="control-group">
+            <label for="glow">GLOW: <span id="glow-val">60%</span></label>
+            <input type="range" id="glow" min="0" max="100" value="60">
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 4. Undo -->
+        <button class="icon-btn" id="btn-undo">
+            <span class="icon">↩️</span>
+            <span class="btn-label">Undo</span>
+        </button>
+
+        <!-- 5. Clear -->
+        <button class="icon-btn" id="btn-clear">
+            <span class="icon">🗑️</span>
+            <span class="btn-label">Clear</span>
+        </button>
+
+        <!-- 6. Download -->
+        <button class="icon-btn" id="btn-download">
+            <span class="icon">💾</span>
+            <span class="btn-label">Download</span>
+        </button>
+
+        <!-- 7. Background Toggle -->
+        <button class="icon-btn background-btn" id="btn-bg-toggle">
+            <span class="icon">🖼️</span>
+            <span class="btn-label">Dark BG</span>
+        </button>
+    </aside>
+
+    <!-- MediaPipe CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <!-- Logic -->
+    <script src="app.js"></script>
+</body>
+
+</html>
