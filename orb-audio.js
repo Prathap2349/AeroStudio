@@ -53,6 +53,10 @@ export class OrbAudioSystem {
         }
     }
 
+    setMasterVolume(val) {
+        this.setVolume(val);
+    }
+
     startAmbientHum() {
         if (!this.isEnabled || this.ambientRunning) return;
         this.init();
@@ -324,5 +328,32 @@ export class OrbAudioSystem {
 
         osc.start(now);
         osc.stop(now + 0.25);
+    }
+
+    // Celebration Chime (Academy or Achievement completion)
+    playCelebrationChime() {
+        if (!this.isEnabled) return;
+        this.init();
+        this.resume();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 arpeggio
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+            g.gain.setValueAtTime(0, now + idx * 0.08);
+            g.gain.linearRampToValueAtTime(0.12, now + idx * 0.08 + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.5);
+
+            osc.connect(g);
+            g.connect(this.masterGain);
+
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.55);
+        });
     }
 }

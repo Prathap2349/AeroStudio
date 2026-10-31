@@ -2,6 +2,7 @@
  * ============================================================================
  * ORB ENGINE - Three.js Master Engine & Lifecycle Coordinator
  * Seamlessly manages scene, camera, bloom composer, physics, and gestures
+ * Integrates Procedural Universe, Galaxy Navigation HUD, and Hand Control Academy
  * ============================================================================
  */
 import * as THREE from 'three';
@@ -16,6 +17,8 @@ import { OrbSceneManager } from './orb-scene.js';
 import { OrbGestureController } from './orb-gestures.js';
 import { OrbModesManager } from './orb-modes.js';
 import { OrbExportSystem } from './orb-export.js';
+import { OrbHUD } from './orb-hud.js';
+import { OrbAcademy } from './orb-academy.js';
 
 export class OrbEngine {
     constructor() {
@@ -41,6 +44,8 @@ export class OrbEngine {
         this.gestureController = null;
         this.modesManager = null;
         this.exportSystem = null;
+        this.hud = null;
+        this.academy = null;
 
         // Loop & time
         this.animFrameId = null;
@@ -101,22 +106,30 @@ export class OrbEngine {
         this.effects = new OrbEffects(this.scene, this.camera);
         this.physics = new OrbPhysics(this.audio, this.effects);
         this.sceneManager = new OrbSceneManager(this.scene);
-        this.gestureController = new OrbGestureController(
-            this.camera,
-            this.sceneManager,
-            this.physics,
-            this.audio,
-            this.effects
-        );
         this.modesManager = new OrbModesManager(
             this.scene,
             this.camera,
             this.audio,
             this.effects
         );
+        this.gestureController = new OrbGestureController(
+            this.camera,
+            this.sceneManager,
+            this.physics,
+            this.audio,
+            this.effects,
+            this.modesManager.getUniverse()
+        );
         this.exportSystem = new OrbExportSystem(this.video, this.canvas);
 
-        // 6. Listeners
+        // 6. Instantiate HUD and Academy controllers
+        this.hud = new OrbHUD(this);
+        window.OrbHUD = this.hud;
+
+        this.academy = new OrbAcademy(this);
+        window.OrbAcademy = this.academy;
+
+        // 7. Listeners
         window.addEventListener('resize', () => this.onResize());
         this.initMouseFallback();
     }
@@ -170,12 +183,13 @@ export class OrbEngine {
             this.isMouseDown = true;
             this.prevMousePos = { x: e.clientX, y: e.clientY };
 
-            // Check if clicking directly on a sphere
+            // Check if clicking directly on a sphere or cosmic object
             const ndcX = (e.clientX / window.innerWidth) * 2 - 1;
             const ndcY = -(e.clientY / window.innerHeight) * 2 + 1;
             const ray = new THREE.Raycaster();
             ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
 
+            // 1. Check orbs
             const intersects = [];
             this.sceneManager.orbs.forEach(orb => {
                 if (orb.visible && orb.coreMesh) {
@@ -189,6 +203,24 @@ export class OrbEngine {
                 this.draggedOrb = intersects[0].orb;
                 this.draggedOrb.isGrabbed = true;
                 if (this.audio) this.audio.playGrab();
+                return;
+            }
+
+            // 2. Check selectable cosmic objects in Galaxy Mode
+            if (this.modesManager && this.modesManager.currentMode === 'galaxy') {
+                const uni = this.modesManager.getUniverse();
+                if (uni && uni.selectableObjects.length > 0) {
+                    const meshes = uni.selectableObjects.map(o => o.mesh);
+                    const cosmicHits = ray.intersectObjects(meshes, true);
+                    if (cosmicHits.length > 0) {
+                        const hitMesh = cosmicHits[0].object;
+                        const matched = uni.selectableObjects.find(o => o.mesh === hitMesh || o.mesh.children.includes(hitMesh));
+                        if (matched) {
+                            if (this.hud) this.hud.showObjectCard(matched);
+                            if (this.audio) this.audio.playGrab();
+                        }
+                    }
+                }
             }
         });
 
@@ -227,8 +259,8 @@ export class OrbEngine {
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             this.gestureController.targetCameraZ = Math.max(
-                2.5,
-                Math.min(9.0, this.gestureController.targetCameraZ + e.deltaY * 0.005)
+                this.gestureController.minCameraZ,
+                Math.min(this.gestureController.maxCameraZ, this.gestureController.targetCameraZ + e.deltaY * 0.005)
             );
         }, { passive: false });
     }
@@ -256,7 +288,7 @@ export class OrbEngine {
             // 2. Update Scene & Idle Animations
             this.sceneManager.update(elapsedTime, dt);
 
-            // 3. Update Submode Environments
+            // 3. Update Submode Environments (including Galaxy procedural universe)
             this.modesManager.update(elapsedTime, dt);
 
             // 4. Update Gestures (Zoom & Rotation inertia)
@@ -333,7 +365,7 @@ export class OrbEngine {
 
             // Normalized pinch distance
             const pinchDist = dist2D(thumbTip, indexTip) / handScale;
-            const isPinching = (pinchDist < 0.42);
+            const isPinching = (pinchDist < 0.40);
 
             // Fist check
             const fingersCurled = dist2D(indexTip, wrist) < 0.25 * handScale &&
@@ -347,7 +379,7 @@ export class OrbEngine {
                 dist2D(ringTip, wrist) > 0.45 * handScale &&
                 dist2D(pinkyTip, wrist) > 0.45 * handScale;
 
-            // Finger spread ratio for Gesture G (Expand / Shrink)
+            // Finger spread ratio
             const spread = dist2D(thumbTip, pinkyTip) / handScale;
 
             parsedHands.push({
@@ -367,14 +399,27 @@ export class OrbEngine {
         // Process through Gesture Controller
         this.gestureController.processHands(parsedHands, timestamp);
 
-        // Update holographic hand skeleton
+        // Holographic hand skeleton
         const selectedScreenPos = (this.gestureController.selectedOrb) ?
             this.project3DToScreen(this.gestureController.selectedOrb.mesh.position) : null;
         this.effects.drawHandSkeleton(parsedHands, null, selectedScreenPos);
 
-        // Update UI status
+        // Update UI tracking badge
         if (window.OrbUI) {
             window.OrbUI.updateTrackingBadge(this.gestureController.trackingStatus);
+        }
+
+        // Update Galaxy Navigation HUD
+        if (this.hud) {
+            this.hud.update(this.gestureController.trackingStatus);
+            if (this.gestureController.selectedCosmicObject) {
+                this.hud.showObjectCard(this.gestureController.selectedCosmicObject);
+            }
+        }
+
+        // Evaluate live Hand Control Academy feedback
+        if (this.academy) {
+            this.academy.evaluateFrame(parsedHands, this.gestureController.trackingStatus);
         }
     }
 

@@ -273,6 +273,100 @@
             <span class="orb-gesture-text" id="orb-gesture-text">Bring both hands into view to interact.</span>
         </div>
 
+        <!-- Galaxy Mode Navigation HUD Overlay -->
+        <div class="orb-galaxy-hud hidden" id="orb-galaxy-hud">
+            <div class="hud-top-bar">
+                <div class="hud-meta-block">
+                    <span class="hud-label">ENVIRONMENT</span>
+                    <span class="hud-value hud-env-highlight" id="hud-env-name">Spiral Galaxy</span>
+                </div>
+                <div class="hud-meta-block">
+                    <span class="hud-label">UNIVERSE SEED</span>
+                    <span class="hud-value" id="hud-seed-num">#123456</span>
+                </div>
+                <div class="hud-meta-block">
+                    <span class="hud-label">ZOOM</span>
+                    <div class="hud-zoom-controls">
+                        <button class="hud-zoom-btn" id="hud-zoom-out" title="Step Zoom Out">−</button>
+                        <span class="hud-value" id="hud-zoom-val">100%</span>
+                        <button class="hud-zoom-btn" id="hud-zoom-in" title="Step Zoom In">+</button>
+                    </div>
+                </div>
+                <div class="hud-meta-block">
+                    <span class="hud-label">TRAVEL SPEED</span>
+                    <span class="hud-value" id="hud-speed-val">0 km/s</span>
+                </div>
+                <div class="hud-meta-block">
+                    <span class="hud-label">HANDS / GESTURE</span>
+                    <div class="hud-status-row">
+                        <span class="hud-state-pill" id="hud-gesture-state">IDLE</span>
+                        <span class="hud-subvalue" id="hud-hands-count">0 Hands</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Galaxy Environment Selector Pills -->
+            <div class="galaxy-env-bar">
+                <button class="galaxy-env-pill active" data-env="spiral" title="Majestic Multi-Arm Spiral Galaxies">🌌 Spiral</button>
+                <button class="galaxy-env-pill" data-env="nebula" title="Dense Interstellar Nebula Clouds">✨ Nebula</button>
+                <button class="galaxy-env-pill" data-env="deepspace" title="Deep Cosmic Starfield & Distant Quasars">🪐 Deep Space</button>
+                <button class="galaxy-env-pill" data-env="blackhole" title="Supermassive Black Hole with Swirling Accretion Disk">🕳️ Black Hole</button>
+                <button class="galaxy-env-pill" data-env="wormhole" title="Spacetime Wormhole Tunnel Gateway">🌀 Wormhole</button>
+                <button class="galaxy-env-pill" data-env="golden" title="Radiant Golden Cosmic Universe">🌟 Golden</button>
+            </div>
+
+            <!-- Universe Seed & View Control Bar -->
+            <div class="galaxy-action-bar">
+                <button class="galaxy-action-btn" id="btn-randomize-universe" title="Generate New Procedural Universe (Deterministic Seed)">
+                    <span>🎲</span>
+                    <span class="btn-text">Randomize</span>
+                </button>
+                <button class="galaxy-action-btn" id="btn-lock-universe" title="Lock Current Universe Seed in LocalStorage">
+                    <span>🔒</span>
+                    <span class="btn-text">Lock</span>
+                </button>
+                <button class="galaxy-action-btn" id="btn-restore-universe" title="Restore Previously Generated Universe">
+                    <span>↩️</span>
+                    <span class="btn-text">Restore</span>
+                </button>
+                <button class="galaxy-action-btn" id="btn-reset-camera" title="Reset Camera and Flight Position to Origin">
+                    <span>🎯</span>
+                    <span class="btn-text">Reset Cam</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Practice Mode Banner -->
+        <div class="orb-practice-banner hidden" id="orb-practice-banner">
+            <span class="practice-pill">🎯 TRAINING ARENA</span>
+            <span class="practice-text">Single target practice mode active. Test zoom, rotation, and pinch.</span>
+            <button class="secondary-btn btn-sm" id="btn-exit-practice">Exit Arena</button>
+        </div>
+
+        <!-- Celestial Object Holographic Info Card -->
+        <div class="galaxy-object-card hidden" id="galaxy-object-card">
+            <div class="obj-card-header">
+                <span class="obj-card-tag" id="obj-card-type">COSMIC BODY</span>
+                <button class="obj-card-close" id="btn-obj-close">✕</button>
+            </div>
+            <h3 class="obj-card-title" id="obj-card-title">Sagittarius A*</h3>
+            <div class="obj-card-stats">
+                <div class="obj-stat">
+                    <span class="stat-label">DISTANCE</span>
+                    <span class="stat-val" id="obj-card-dist">3.8 LY</span>
+                </div>
+                <div class="obj-stat">
+                    <span class="stat-label">MASS</span>
+                    <span class="stat-val" id="obj-card-mass">4.1M M☉</span>
+                </div>
+            </div>
+            <p class="obj-card-desc" id="obj-card-desc">Supermassive black hole anchoring the primary galactic nucleus.</p>
+            <div class="obj-card-actions">
+                <button class="primary-btn btn-sm" id="btn-obj-fly-here">🚀 Fly Here</button>
+                <button class="secondary-btn btn-sm" id="btn-obj-return">↩️ Universe View</button>
+            </div>
+        </div>
+
         <!-- Orb Floating Side Controls -->
         <aside class="orb-side-controls" id="orb-controls">
             <div class="orb-control-card">
@@ -304,6 +398,25 @@
                     <span class="icon">🎥</span>
                     <span class="btn-label">Record 3D</span>
                 </button>
+
+                <div class="orb-divider"></div>
+
+                <!-- Hand Control Academy & Training Arena -->
+                <button class="orb-tool-btn full-width highlight-btn" id="btn-open-academy" title="Open Interactive Hand Control Academy">
+                    <span class="icon">🎓</span>
+                    <span class="btn-label">Hand Academy</span>
+                </button>
+
+                <div class="orb-tool-row">
+                    <button class="orb-tool-btn" id="btn-practice-mode" title="Enter Single-Target Practice Arena">
+                        <span class="icon">🎯</span>
+                        <span class="label">Practice</span>
+                    </button>
+                    <button class="orb-tool-btn" id="btn-orb-settings" title="Adjust Sensitivities & Quality">
+                        <span class="icon">⚙️</span>
+                        <span class="label">Settings</span>
+                    </button>
+                </div>
 
                 <div class="orb-divider"></div>
 
@@ -356,6 +469,99 @@
                     <span class="submode-icon">🌸</span>
                     <span class="submode-label">Fidget</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hand Control Academy Modal -->
+    <div class="modal-backdrop hidden" id="orb-academy-modal">
+        <div class="modal-card academy-card">
+            <div class="modal-header">
+                <div>
+                    <span class="academy-badge">HAND CONTROL ACADEMY</span>
+                    <h2 id="academy-step-title">1. Two-Hand Tracking</h2>
+                </div>
+                <button class="modal-close-btn" id="btn-close-academy">✕</button>
+            </div>
+            <div class="academy-body">
+                <div class="academy-stage">
+                    <div class="academy-icon" id="academy-step-icon">👐</div>
+                    <div class="academy-detection-box">
+                        <span class="academy-status pending" id="academy-detection-badge">Awaiting Gesture...</span>
+                    </div>
+                </div>
+                <div class="academy-text">
+                    <span class="step-num-pill" id="academy-step-num">STEP 1 OF 8</span>
+                    <p id="academy-step-desc">Raise both hands into camera view. Keep palms facing towards the screen at a comfortable distance.</p>
+                </div>
+                <div class="academy-dots" id="academy-step-dots">
+                    <!-- Dots injected via JS -->
+                </div>
+            </div>
+            <div class="modal-footer academy-footer">
+                <button class="secondary-btn btn-sm" id="academy-btn-prev">← Previous</button>
+                <button class="secondary-btn btn-sm" id="academy-btn-practice">Practice Arena</button>
+                <button class="secondary-btn btn-sm" id="academy-btn-skip">Skip</button>
+                <button class="primary-btn btn-sm" id="academy-btn-next">Next Step →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orb 3D Settings Modal -->
+    <div class="modal-backdrop hidden" id="orb-settings-modal">
+        <div class="modal-card settings-card">
+            <div class="modal-header">
+                <h2>ORB 3D SETTINGS</h2>
+                <button class="modal-close-btn" id="btn-close-orb-settings">✕</button>
+            </div>
+            <div class="modal-body settings-body">
+                <div class="setting-item">
+                    <div class="setting-meta">
+                        <span class="setting-title">Zoom Sensitivity</span>
+                        <span class="setting-val" id="setting-zoom-val">5.5</span>
+                    </div>
+                    <input type="range" id="setting-zoom-sens" min="1.0" max="10.0" step="0.5" value="5.5">
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-meta">
+                        <span class="setting-title">Rotation Sensitivity</span>
+                        <span class="setting-val" id="setting-rot-val">1.0</span>
+                    </div>
+                    <input type="range" id="setting-rot-sens" min="0.2" max="3.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-meta">
+                        <span class="setting-title">Space Flight Speed</span>
+                        <span class="setting-val" id="setting-flight-val">2.0</span>
+                    </div>
+                    <input type="range" id="setting-flight-speed" min="0.5" max="5.0" step="0.5" value="2.0">
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-meta">
+                        <span class="setting-title">Pinch Activation Threshold</span>
+                        <span class="setting-val" id="setting-pinch-val">0.35</span>
+                    </div>
+                    <input type="range" id="setting-pinch-thresh" min="0.20" max="0.50" step="0.02" value="0.35">
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-meta">
+                        <span class="setting-title">Synthesizer Master Volume</span>
+                        <span class="setting-val" id="setting-sound-val">80%</span>
+                    </div>
+                    <input type="range" id="setting-sound-vol" min="0" max="100" step="5" value="80">
+                </div>
+
+                <div class="setting-toggle-row">
+                    <span class="setting-title">Holographic Hand Skeleton Overlay</span>
+                    <label class="switch">
+                        <input type="checkbox" id="setting-toggle-skeleton" checked>
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
             </div>
         </div>
     </div>

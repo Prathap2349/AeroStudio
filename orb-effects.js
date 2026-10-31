@@ -27,6 +27,7 @@ export class OrbEffects {
         // Skeleton overlay canvas
         this.skeletonCanvas = document.getElementById('skeleton-canvas');
         this.skeletonCtx = this.skeletonCanvas ? this.skeletonCanvas.getContext('2d') : null;
+        this.skeletonVisible = true;
 
         this.initAmbientParticles();
         this.initTrailSystem();
@@ -286,9 +287,16 @@ export class OrbEffects {
         }
     }
 
+    setSkeletonVisible(visible) {
+        this.skeletonVisible = !!visible;
+        if (!this.skeletonVisible) {
+            this.clearSkeleton();
+        }
+    }
+
     // Holographic Hand Skeleton Visualizer (Draws subtle glowing joints & connections)
     drawHandSkeleton(handsData, activePinchHand = null, selectedOrbPos = null) {
-        if (!this.skeletonCtx || !this.skeletonCanvas) return;
+        if (!this.skeletonCtx || !this.skeletonCanvas || !this.skeletonVisible) return;
         const ctx = this.skeletonCtx;
         const w = this.skeletonCanvas.width;
         const h = this.skeletonCanvas.height;
