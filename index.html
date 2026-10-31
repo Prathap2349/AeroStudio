@@ -3,96 +3,374 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Air Draw - Real-Time Hand Tracking</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
         rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="bg-mirror">
 
-    <!-- Background / Media Display -->
+    <!-- Background / Media Container -->
     <div class="media-container" id="media-container">
-        <video class="input_video" id="webcam" autoplay playsinline></video>
+        <video class="input_video" id="webcam" autoplay playsinline muted></video>
+        <div class="bg-layer" id="bg-layer"></div>
         <canvas class="output_canvas" id="canvas"></canvas>
     </div>
 
-    <!-- Loading State -->
+    <!-- Friendly Error / Help Banner (Replaces alert() calls) -->
+    <div id="error-banner" class="error-banner hidden" role="alert">
+        <div class="banner-icon" id="banner-icon">⚠️</div>
+        <div class="banner-content">
+            <h3 id="banner-title">Camera or WebGL Notice</h3>
+            <p id="banner-message">Hand tracking is initializing...</p>
+            <div class="banner-tips" id="banner-tips"></div>
+        </div>
+        <div class="banner-actions">
+            <button class="banner-btn primary" id="banner-fallback-btn">Use Mouse / Touch</button>
+            <button class="banner-btn secondary" id="banner-dismiss-btn" title="Dismiss">✕</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Top Status Bar -->
+    <header class="top-bar">
+        <div class="status-badge" id="status-badge" title="Live Hand Tracking Status">
+            <span class="status-dot" id="status-dot"></span>
+            <span class="status-mode" id="status-mode">INITIALIZING...</span>
+        </div>
+
+        <div class="top-bar-center">
+            <span class="rec-indicator hidden" id="rec-indicator">
+                <span class="rec-dot"></span>
+                <span class="rec-text" id="rec-timer">REC 00:00</span>
+            </span>
+            <span class="speech-badge hidden" id="speech-badge" title="Voice command heard">
+                <span class="icon">🎙️</span> <span id="speech-transcript">Listening...</span>
+            </span>
+        </div>
+
+        <div class="top-bar-controls">
+            <button class="icon-toggle-btn" id="btn-toggle-sound" title="Toggle Sound (M)" aria-label="Toggle Sound">
+                <span class="icon" id="sound-icon">🔊</span>
+            </button>
+            <button class="icon-toggle-btn" id="btn-open-tutorial" title="Gesture Guide & Shortcuts (?)" aria-label="Help">
+                <span class="icon">❓</span>
+            </button>
+            <button class="icon-toggle-btn panel-collapse-btn" id="btn-toggle-panel" title="Toggle Panel (H)" aria-label="Toggle Panel">
+                <span class="icon" id="panel-toggle-icon">☰</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Initial Loading Overlay -->
     <div id="loading" class="overlay">
         <div class="loader"></div>
-        <p>Initializing MediaPipe Hands...</p>
+        <p class="loading-title">Initializing Air Draw...</p>
+        <p class="loading-sub" id="loading-status">Loading MediaPipe HandLandmarker AI model...</p>
+        <button class="loading-skip-btn" id="btn-skip-to-mouse">Skip to Mouse / Touch Drawing</button>
     </div>
 
-    <!-- Gesture Hint -->
+    <!-- Gesture Hint Overlay (quick toast on start) -->
     <div id="gesture-hint" class="hint-overlay hidden">
-        ☝️ Index finger = Draw | 🤏 Pinch = Move | ✋ Open hand = Idle
+        ☝️ Index = Draw &nbsp;|&nbsp; 🤏 Pinch = Move &nbsp;|&nbsp; ✊ Fist = Erase &nbsp;|&nbsp; ✌️ Index+Middle = Pointer
     </div>
 
-    <!-- Right Panel -->
+    <!-- Right Control Panel -->
     <aside class="panel" id="ui-panel">
-        <h1 class="panel-header">AIR DRAW</h1>
+        <div class="panel-header-wrap">
+            <h1 class="panel-header">AIR DRAW</h1>
+            <button class="panel-close-btn" id="btn-close-panel" title="Collapse Panel (H)">✕</button>
+        </div>
 
-        <!-- 1. Color Palette -->
+        <!-- Mode / Tool Selector -->
         <div class="control-group">
-            <label>COLOR</label>
+            <label>ACTIVE TOOL</label>
+            <div class="tool-grid" id="tool-grid">
+                <button class="tool-btn active" id="btn-tool-draw" data-tool="DRAW" title="Draw with Index Finger (or Drag)">
+                    <span class="tool-icon">✏️</span>
+                    <span class="tool-name">Draw</span>
+                </button>
+                <button class="tool-btn" id="btn-tool-erase" data-tool="ERASE" title="Erase with Fist (or Drag)">
+                    <span class="tool-icon">🧹</span>
+                    <span class="tool-name">Erase</span>
+                </button>
+                <button class="tool-btn" id="btn-tool-move" data-tool="MOVE" title="Move Stroke with Pinch">
+                    <span class="tool-icon">✋</span>
+                    <span class="tool-name">Move</span>
+                </button>
+                <button class="tool-btn" id="btn-tool-pointer" data-tool="POINTER" title="Hands-free Hover Cursor (Index + Middle)">
+                    <span class="tool-icon">👆</span>
+                    <span class="tool-name">Pointer</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Brush Style Selector -->
+        <div class="control-group">
+            <label>BRUSH TYPE</label>
+            <div class="brush-selector" id="brush-selector">
+                <button class="brush-chip active" data-brush="neon" title="Vibrant glowing neon stroke">Neon</button>
+                <button class="brush-chip" data-brush="calligraphy" title="Speed-sensitive expressive calligraphy">Callig.</button>
+                <button class="brush-chip" data-brush="rainbow" title="Color cycles smoothly along stroke">Rainbow</button>
+                <button class="brush-chip" data-brush="spray" title="Graffiti spray paint particles">Spray</button>
+                <button class="brush-chip" data-brush="dashed" title="Cyberpunk dashed neon lines">Dashed</button>
+            </div>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="control-group">
+            <div class="label-with-action">
+                <label>COLOR</label>
+                <label for="custom-color" class="custom-color-label" title="Custom Color Picker">
+                    <span>Custom</span>
+                    <input type="color" id="custom-color" value="#FF007F">
+                </label>
+            </div>
             <div class="color-palette" id="color-palette">
                 <!-- Generated via JS -->
             </div>
         </div>
 
-        <!-- 2. Thickness Slider -->
+        <!-- Thickness Slider -->
         <div class="control-group">
             <label for="thickness">THICKNESS: <span id="thickness-val">6px</span></label>
-            <input type="range" id="thickness" min="2" max="30" value="6">
+            <div class="slider-wrap">
+                <input type="range" id="thickness" min="2" max="40" value="6">
+                <div class="slider-preview-dot" id="thickness-preview"></div>
+            </div>
         </div>
 
-        <!-- 3. Glow Slider -->
+        <!-- Glow Slider -->
         <div class="control-group">
             <label for="glow">GLOW: <span id="glow-val">60%</span></label>
             <input type="range" id="glow" min="0" max="100" value="60">
         </div>
 
+        <!-- Shape Snapping Toggle -->
+        <div class="control-group">
+            <div class="toggle-row" id="toggle-shape-snap-row" title="Automatically snap circles, lines, rectangles, triangles">
+                <span class="toggle-label">✨ Shape Snapping</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-shape-snap">
+                    <span class="slider-round"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Voice Commands Toggle -->
+        <div class="control-group">
+            <div class="toggle-row" id="toggle-voice-row" title="Say 'Undo', 'Clear', 'Red', 'Bigger', etc.">
+                <span class="toggle-label">🎙️ Voice Commands</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-voice">
+                    <span class="slider-round"></span>
+                </label>
+            </div>
+        </div>
+
         <div class="divider"></div>
 
-        <!-- 4. Undo -->
-        <button class="icon-btn" id="btn-undo">
-            <span class="icon">↩️</span>
-            <span class="btn-label">Undo</span>
-        </button>
+        <!-- History Actions (Undo / Redo / Clear) -->
+        <div class="history-grid">
+            <button class="icon-btn" id="btn-undo" title="Undo Last Action (Z)">
+                <span class="icon">↩️</span>
+                <span class="btn-label">Undo</span>
+            </button>
+            <button class="icon-btn" id="btn-redo" title="Redo Action (Shift+Z / Y)">
+                <span class="icon">↪️</span>
+                <span class="btn-label">Redo</span>
+            </button>
+        </div>
 
-        <!-- 5. Clear -->
-        <button class="icon-btn" id="btn-clear">
+        <button class="icon-btn danger-btn" id="btn-clear" title="Clear Canvas (C / Open Palm 2s)">
             <span class="icon">🗑️</span>
-            <span class="btn-label">Clear</span>
+            <span class="btn-label">Clear Canvas</span>
         </button>
 
-        <!-- 6. Download -->
-        <button class="icon-btn" id="btn-download">
-            <span class="icon">💾</span>
-            <span class="btn-label">Download</span>
-        </button>
+        <div class="divider"></div>
 
-        <!-- 7. Background Toggle -->
-        <button class="icon-btn background-btn" id="btn-bg-toggle">
+        <!-- Export & Save Options -->
+        <div class="control-group">
+            <label>EXPORT & RECORD</label>
+            <div class="export-grid">
+                <button class="icon-btn" id="btn-download" title="Save as PNG image (S)">
+                    <span class="icon">💾</span>
+                    <span class="btn-label">Save PNG</span>
+                </button>
+                <button class="icon-btn" id="btn-export-svg" title="Export as scalable vector graphic (SVG)">
+                    <span class="icon">📐</span>
+                    <span class="btn-label">Export SVG</span>
+                </button>
+            </div>
+            <button class="icon-btn rec-btn" id="btn-record-timelapse" title="Record a timelapse video of your drawing">
+                <span class="icon">🎥</span>
+                <span class="btn-label" id="rec-btn-label">Record Timelapse</span>
+            </button>
+        </div>
+
+        <!-- Gallery -->
+        <button class="icon-btn" id="btn-open-gallery" title="View Saved Drawings Gallery">
             <span class="icon">🖼️</span>
-            <span class="btn-label">Dark BG</span>
+            <span class="btn-label">Drawing Gallery</span>
         </button>
+
+        <!-- Background Options Selector -->
+        <div class="control-group background-group">
+            <label>BACKGROUND</label>
+            <div class="bg-selector" id="bg-selector">
+                <button class="bg-btn active" data-bg="mirror" title="Webcam mirror background">Webcam</button>
+                <button class="bg-btn" data-bg="dark" title="Pure cyber dark background">Dark</button>
+                <button class="bg-btn" data-bg="white" title="Clean whiteboard background">White</button>
+                <button class="bg-btn" data-bg="grid" title="Blueprint cyberpunk grid">Grid</button>
+                <button class="bg-btn" data-bg="chalk" title="Slate chalkboard texture">Chalk</button>
+            </div>
+            <!-- Backward compatibility button for existing styles/tests -->
+            <button class="icon-btn background-btn hidden" id="btn-bg-toggle">
+                <span class="icon">🖼️</span>
+                <span class="btn-label">Dark BG</span>
+            </button>
+        </div>
     </aside>
 
-    <!-- MediaPipe CDNs -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <!-- First-Run Tutorial Modal -->
+    <div class="modal-backdrop hidden" id="tutorial-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>AIR DRAW GESTURE GUIDE</h2>
+                <button class="modal-close-btn" id="btn-close-tutorial">✕</button>
+            </div>
+            <div class="modal-body tutorial-grid">
+                <div class="gesture-card">
+                    <div class="gesture-icon">☝️</div>
+                    <div class="gesture-info">
+                        <h4>Draw Mode</h4>
+                        <p>Raise your <strong>Index finger</strong> with others curled to draw smooth glowing strokes in the air.</p>
+                    </div>
+                </div>
 
-    <!-- Logic -->
-    <script src="app.js"></script>
+                <div class="gesture-card">
+                    <div class="gesture-icon">🤏</div>
+                    <div class="gesture-info">
+                        <h4>Pinch to Move</h4>
+                        <p>Bring <strong>Thumb & Index</strong> close together to grab and reposition any stroke on screen.</p>
+                    </div>
+                </div>
+
+                <div class="gesture-card">
+                    <div class="gesture-icon">✊</div>
+                    <div class="gesture-info">
+                        <h4>Fist = Eraser</h4>
+                        <p>Make a <strong>Fist</strong> to erase only the strokes your hand touches in real-time.</p>
+                    </div>
+                </div>
+
+                <div class="gesture-card">
+                    <div class="gesture-icon">👆</div>
+                    <div class="gesture-info">
+                        <h4>Finger-Pointer Hover</h4>
+                        <p>Raise <strong>Index + Middle</strong> fingers to control the cursor. Hover over any button for 1 second to click it hands-free!</p>
+                    </div>
+                </div>
+
+                <div class="gesture-card">
+                    <div class="gesture-icon">👍</div>
+                    <div class="gesture-info">
+                        <h4>Thumbs Up = Undo</h4>
+                        <p>Point your <strong>Thumb up</strong> with fingers curled to quickly undo your previous stroke or action.</p>
+                    </div>
+                </div>
+
+                <div class="gesture-card">
+                    <div class="gesture-icon">✋</div>
+                    <div class="gesture-info">
+                        <h4>Open Palm</h4>
+                        <p>Open hand pauses drawing. <strong>Hold open hand for 2s</strong> to clear the entire canvas.</p>
+                    </div>
+                </div>
+
+                <div class="gesture-card highlight-card">
+                    <div class="gesture-icon">👐</div>
+                    <div class="gesture-info">
+                        <h4>Two-Hand Magic</h4>
+                        <p>Pinch with <strong>both hands</strong> to scale and rotate a stroke! Or draw with one hand while hovering tools with the other.</p>
+                    </div>
+                </div>
+
+                <div class="gesture-card highlight-card">
+                    <div class="gesture-icon">⌨️</div>
+                    <div class="gesture-info">
+                        <h4>Keyboard Shortcuts</h4>
+                        <p><strong>Z:</strong> Undo | <strong>Y:</strong> Redo | <strong>C:</strong> Clear | <strong>S:</strong> Save | <strong>E:</strong> Eraser | <strong>H:</strong> Toggle Panel</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="primary-btn" id="btn-start-drawing">Start Drawing</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery Modal -->
+    <div class="modal-backdrop hidden" id="gallery-modal">
+        <div class="modal-card gallery-modal-card">
+            <div class="modal-header">
+                <h2>SAVED DRAWINGS GALLERY</h2>
+                <button class="modal-close-btn" id="btn-close-gallery">✕</button>
+            </div>
+            <div class="gallery-actions">
+                <button class="primary-btn" id="btn-save-current-to-gallery">💾 Save Current Drawing</button>
+                <button class="secondary-btn" id="btn-clear-gallery">Clear All Saved</button>
+            </div>
+            <div class="gallery-grid" id="gallery-grid">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-backdrop hidden" id="export-modal">
+        <div class="modal-card export-modal-card">
+            <div class="modal-header">
+                <h2>SAVE & EXPORT ARTWORK</h2>
+                <button class="modal-close-btn" id="btn-close-export">✕</button>
+            </div>
+            <div class="export-options-list">
+                <div class="export-option-row">
+                    <div class="export-opt-text">
+                        <h4>PNG with Current Background</h4>
+                        <p>Includes video mirror or selected background theme.</p>
+                    </div>
+                    <button class="secondary-btn" id="btn-export-png-bg">Download PNG</button>
+                </div>
+                <div class="export-option-row">
+                    <div class="export-opt-text">
+                        <h4>PNG Transparent</h4>
+                        <p>Export only your glowing strokes with no background.</p>
+                    </div>
+                    <button class="secondary-btn" id="btn-export-png-transparent">Download Transparent</button>
+                </div>
+                <div class="export-option-row">
+                    <div class="export-opt-text">
+                        <h4>Vector SVG</h4>
+                        <p>Crisp, infinitely scalable vector artwork file.</p>
+                    </div>
+                    <button class="secondary-btn" id="btn-export-svg-confirm">Download SVG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Application Logic (Pure Vanilla ES Module, Zero Build Step) -->
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>
