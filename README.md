@@ -7,7 +7,7 @@ AeroStudio is an enterprise-grade client-side computer vision application that u
 
 The entire system executes client-side using native HTML5, CSS3, Three.js (r160), and modern ECMAScript modules with no build tools, compilers, or bundlers required.
 
-**Live Demo / Website**: [https://prathap2349.github.io/airdraw/](https://prathap2349.github.io/airdraw/)
+**Live Demo / Website**: [https://prathap2349.github.io/AeroStudio/)
 
 ---
 
