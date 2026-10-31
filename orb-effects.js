@@ -29,6 +29,9 @@ export class OrbEffects {
         this.skeletonCtx = this.skeletonCanvas ? this.skeletonCanvas.getContext('2d') : null;
         this.skeletonVisible = true;
 
+        // Reusable scratch vector for zero allocations
+        this._scratchTrailOffset = new THREE.Vector3();
+
         this.initAmbientParticles();
         this.initTrailSystem();
     }
@@ -154,13 +157,12 @@ export class OrbEffects {
         let emitted = 0;
         for (let i = 0; i < this.maxTrails; i++) {
             if (this.trailData[i].alpha <= 0) {
-                this.trailData[i].pos.copy(position).add(
-                    new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.1,
-                        (Math.random() - 0.5) * 0.1,
-                        (Math.random() - 0.5) * 0.1
-                    )
+                this._scratchTrailOffset.set(
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1
                 );
+                this.trailData[i].pos.copy(position).add(this._scratchTrailOffset);
                 this.trailData[i].color.copy(color);
                 this.trailData[i].alpha = 1.0;
                 this.trailData[i].size = Math.random() * 0.15 + 0.08;
@@ -196,32 +198,36 @@ export class OrbEffects {
     }
 
     update(dt, orbs, fingertips = []) {
+        const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
+        const timeFactor = safeDt * 60;
+
         // 1. Update Ambient Particles & Finger Attraction
-        if (this.ambientParticles) {
+        if (this.ambientParticles && this.ambientParticles.visible) {
             const posAttr = this.ambientParticles.geometry.attributes.position;
             const posArr = posAttr.array;
 
             for (let i = 0; i < this.particleCount; i++) {
                 const idx = i * 3;
-                posArr[idx] += this.particleVelocities[i].x;
-                posArr[idx + 1] += this.particleVelocities[i].y;
-                posArr[idx + 2] += this.particleVelocities[i].z;
+                posArr[idx] += this.particleVelocities[i].x * timeFactor;
+                posArr[idx + 1] += this.particleVelocities[i].y * timeFactor;
+                posArr[idx + 2] += this.particleVelocities[i].z * timeFactor;
 
                 // Gentle attraction toward detected fingertips
                 if (fingertips && fingertips.length > 0) {
-                    fingertips.forEach(ft => {
+                    for (let f = 0; f < fingertips.length; f++) {
+                        const ft = fingertips[f];
                         const dx = ft.x - posArr[idx];
                         const dy = ft.y - posArr[idx + 1];
                         const dz = ft.z - posArr[idx + 2];
                         const distSq = dx * dx + dy * dy + dz * dz;
 
                         if (distSq < 4.0 && distSq > 0.04) {
-                            const force = 0.003 / Math.sqrt(distSq);
+                            const force = (0.003 / Math.sqrt(distSq)) * timeFactor;
                             posArr[idx] += dx * force;
                             posArr[idx + 1] += dy * force;
                             posArr[idx + 2] += dz * force;
                         }
-                    });
+                    }
                 }
 
                 // Wrap-around bounds

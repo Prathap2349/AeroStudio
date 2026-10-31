@@ -16,10 +16,15 @@ export class OrbExportSystem {
         this.recordingInterval = null;
     }
 
-    captureScreenshot() {
+    captureScreenshot(onRenderCallback = null) {
+        // Ensure latest frame is actively rendered to canvas if preserveDrawingBuffer is false
+        if (onRenderCallback && typeof onRenderCallback === 'function') {
+            onRenderCallback();
+        }
+
         const w = window.innerWidth;
         const h = window.innerHeight;
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2.0);
 
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = w * dpr;
@@ -34,7 +39,7 @@ export class OrbExportSystem {
             ctx.drawImage(this.video, -w, 0, w, h);
             ctx.restore();
         } else {
-            ctx.fillStyle = '#070810';
+            ctx.fillStyle = '#060913';
             ctx.fillRect(0, 0, w, h);
         }
 
@@ -45,7 +50,7 @@ export class OrbExportSystem {
 
         // 3. Trigger Download
         const link = document.createElement('a');
-        link.download = `airdraw_orb_3d_${Date.now()}.png`;
+        link.download = `aerostudio_3d_${Date.now()}.png`;
         link.href = tempCanvas.toDataURL('image/png');
         link.click();
     }
@@ -72,7 +77,7 @@ export class OrbExportSystem {
                 const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.download = `airdraw_orb_timelapse_${Date.now()}.webm`;
+                a.download = `aerostudio_3d_timelapse_${Date.now()}.webm`;
                 a.href = url;
                 a.click();
                 URL.revokeObjectURL(url);

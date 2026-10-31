@@ -9,11 +9,12 @@ import * as THREE from 'three';
 import { ProceduralUniverse } from './orb-universe.js';
 
 export class OrbModesManager {
-    constructor(scene, camera, audio, effects) {
+    constructor(scene, camera, audio, effects, sceneManager = null) {
         this.scene = scene;
         this.camera = camera;
         this.audio = audio;
         this.effects = effects;
+        this.sceneManager = sceneManager;
 
         this.currentMode = 'classic'; // 'classic' | 'planet' | 'galaxy' | 'atom' | 'morph' | 'fidget'
         this.modeGroup = new THREE.Group();
@@ -46,10 +47,22 @@ export class OrbModesManager {
         return this.universe;
     }
 
+    setSceneManager(sceneManager) {
+        this.sceneManager = sceneManager;
+    }
+
     switchMode(modeName) {
         if (this.currentMode === modeName && this.modeGroup.children.length > 0) return;
         this.clearCurrentModeObjects();
         this.currentMode = modeName;
+
+        // Classic Orbs (energy spheres) are only visible in 'classic' ("Orbs") mode
+        const isClassic = (modeName === 'classic');
+        if (this.sceneManager) {
+            this.sceneManager.setVisible(isClassic);
+        } else if (window.OrbEngine && window.OrbEngine.sceneManager) {
+            window.OrbEngine.sceneManager.setVisible(isClassic);
+        }
 
         if (this.audio) this.audio.playShapeMorph();
         if (this.effects) this.effects.spawnShockwave(new THREE.Vector3(0, 0, 0), 0x00ffff, 4.0, 0.5);
@@ -58,8 +71,22 @@ export class OrbModesManager {
         if (modeName === 'galaxy') {
             this.universe.rootGroup.visible = true;
             this.initGalaxyMode();
+            this.camera.position.set(0, 3.8, 11.5);
+            this.camera.lookAt(0, 0, -1.0);
+            if (window.OrbEngine && window.OrbEngine.gestureController) {
+                window.OrbEngine.gestureController.currentCameraZ = 11.5;
+                window.OrbEngine.gestureController.targetCameraZ = 11.5;
+                window.OrbEngine.gestureController.baseCameraZ = 11.5;
+            }
         } else {
             this.universe.rootGroup.visible = false;
+            this.camera.position.set(0, 0, 5.2);
+            this.camera.lookAt(0, 0, 0);
+            if (window.OrbEngine && window.OrbEngine.gestureController) {
+                window.OrbEngine.gestureController.currentCameraZ = 5.2;
+                window.OrbEngine.gestureController.targetCameraZ = 5.2;
+                window.OrbEngine.gestureController.baseCameraZ = 5.2;
+            }
         }
 
         switch (modeName) {

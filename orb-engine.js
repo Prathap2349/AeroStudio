@@ -70,18 +70,30 @@ export class OrbEngine {
         this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
         this.camera.position.set(0, 0, 5.2);
 
-        // 3. Renderer with transparency for webcam background
+        // Renderer with transparency for webcam background
+        // preserveDrawingBuffer is set to false for maximum rendering throughput on Apple Silicon and integrated GPUs.
+        // renderForCapture() is called on-demand immediately before taking screenshots.
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             alpha: true,
             antialias: true,
-            preserveDrawingBuffer: true,
+            preserveDrawingBuffer: false,
             powerPreference: 'high-performance'
         });
         this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.1;
+        this.renderer.toneMappingExposure = 1.05;
+
+        // Diagnostics tracking
+        this.lastFpsUpdate = performance.now();
+        this.frameCount = 0;
+        this.currentFps = 60;
+        this.currentFrameTime = 16.6;
+
+        // Reusable scratch vectors for zero per-frame allocations
+        this._projVec = new THREE.Vector3();
+        this._projResult = { x: 0, y: 0 };
 
         // 4. Post-processing (UnrealBloomPass)
         try {
@@ -110,7 +122,8 @@ export class OrbEngine {
             this.scene,
             this.camera,
             this.audio,
-            this.effects
+            this.effects,
+            this.sceneManager
         );
         this.gestureController = new OrbGestureController(
             this.camera,
@@ -143,20 +156,41 @@ export class OrbEngine {
             this.renderer.setPixelRatio(1.0);
             if (this.bloomPass) this.bloomPass.enabled = false;
         } else if (level === 'BALANCED') {
-            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
             if (this.bloomPass) {
                 this.bloomPass.enabled = true;
-                this.bloomPass.strength = 0.85;
+                this.bloomPass.strength = 0.75;
+                this.bloomPass.radius = 0.40;
             }
         } else { // HIGH
-            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.85));
             if (this.bloomPass) {
                 this.bloomPass.enabled = true;
-                this.bloomPass.strength = 1.35;
+                this.bloomPass.strength = 1.15;
+                this.bloomPass.radius = 0.55;
             }
         }
 
         if (this.effects) this.effects.setQuality(level);
+        if (this.composer) this.composer.setSize(width, height);
+        this.renderer.setSize(width, height);
+    }
+
+    renderForCapture() {
+        if (this.composer && this.bloomPass && this.bloomPass.enabled) {
+            this.composer.render();
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
+    }
+
+    onVisibilityChange(isVisible) {
+        if (!isVisible) {
+            if (this.audio) this.audio.stopAmbientHum();
+        } else if (this.isActive) {
+            this.clock.start();
+            if (this.audio) this.audio.startAmbientHum();
+        }
     }
 
     onResize() {
@@ -282,8 +316,10 @@ export class OrbEngine {
             const dt = Math.min(this.clock.getDelta(), 0.1);
             const elapsedTime = this.clock.getElapsedTime();
 
-            // 1. Update Physics
-            this.physics.update(this.sceneManager.orbs, dt);
+            // 1. Update Physics (only in classic orbs mode)
+            if (this.modesManager.currentMode === 'classic') {
+                this.physics.update(this.sceneManager.orbs, dt);
+            }
 
             // 2. Update Scene & Idle Animations
             this.sceneManager.update(elapsedTime, dt);
@@ -302,6 +338,26 @@ export class OrbEngine {
                 this.composer.render();
             } else {
                 this.renderer.render(this.scene, this.camera);
+            }
+
+            // 7. Diagnostics Telemetry (FPS, Frame Time, Draw Calls)
+            this.frameCount++;
+            const perfNow = performance.now();
+            if (perfNow - this.lastFpsUpdate >= 500) {
+                this.currentFps = Math.round((this.frameCount * 1000) / (perfNow - this.lastFpsUpdate));
+                this.currentFrameTime = dt * 1000;
+                this.frameCount = 0;
+                this.lastFpsUpdate = perfNow;
+
+                if (this.hud && typeof this.hud.updateDiagnostics === 'function') {
+                    this.hud.updateDiagnostics({
+                        fps: this.currentFps,
+                        frameTime: this.currentFrameTime,
+                        drawCalls: this.renderer.info.render.calls,
+                        triangles: this.renderer.info.render.triangles,
+                        quality: this.quality
+                    });
+                }
             }
         };
 
@@ -424,11 +480,10 @@ export class OrbEngine {
     }
 
     project3DToScreen(pos3D) {
-        const p = pos3D.clone().project(this.camera);
-        return {
-            x: ((p.x + 1) / 2) * window.innerWidth,
-            y: ((-p.y + 1) / 2) * window.innerHeight
-        };
+        this._projVec.copy(pos3D).project(this.camera);
+        this._projResult.x = ((this._projVec.x + 1) / 2) * window.innerWidth;
+        this._projResult.y = ((-this._projVec.y + 1) / 2) * window.innerHeight;
+        return this._projResult;
     }
 
     dispose() {

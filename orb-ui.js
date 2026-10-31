@@ -68,9 +68,15 @@ export class OrbUIController {
 
         if (this.btnOrbSpawn) {
             this.btnOrbSpawn.addEventListener('click', () => {
-                if (this.engine && this.engine.sceneManager) {
-                    this.engine.sceneManager.spawnOrb();
-                    if (this.engine.audio) this.engine.audio.playSpawn();
+                if (this.engine) {
+                    if (this.engine.modesManager && this.engine.modesManager.currentMode !== 'classic') {
+                        const classicBtn = document.querySelector('.orb-submode-btn[data-submode="classic"]');
+                        if (classicBtn) classicBtn.click();
+                    }
+                    if (this.engine.sceneManager) {
+                        this.engine.sceneManager.spawnOrb();
+                        if (this.engine.audio) this.engine.audio.playSpawn();
+                    }
                 }
             });
         }
@@ -86,7 +92,7 @@ export class OrbUIController {
         if (this.btnOrbScreenshot) {
             this.btnOrbScreenshot.addEventListener('click', () => {
                 if (this.engine && this.engine.exportSystem) {
-                    this.engine.exportSystem.captureScreenshot();
+                    this.engine.exportSystem.captureScreenshot(() => this.engine.renderForCapture());
                 }
             });
         }

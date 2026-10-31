@@ -1,17 +1,19 @@
-# AirDraw: Real-Time Hand-Tracking Drawing & 3D Procedural Universe
+# AeroStudio: Real-Time Hand-Tracking Drawing & 3D Procedural Universe
 
-AirDraw is an enterprise-grade client-side computer vision application that unifies two distinct creative platforms in a single zero-build codebase:
+AeroStudio is an enterprise-grade client-side computer vision application that unifies two distinct creative platforms in a single zero-build codebase:
 
 1. **Draw Mode**: A touchless 2D air canvas powered by Google MediaPipe Tasks Vision (`HandLandmarker`), featuring adaptive One Euro filtering, geometric shape snapping, selective collision-based erasing, five specialized brush dynamics, and vector/raster export pipelines.
 2. **Orb Mode & Galaxy Universe**: A volumetric 3D environment powered by Three.js, featuring a deterministic procedural universe engine, relativistic camera navigation, baseline-anchored stable zoom, a 10-state gesture machine, an interactive Hand Control Academy, and six selectable astrophysical environments.
 
 The entire system executes client-side using native HTML5, CSS3, Three.js (r160), and modern ECMAScript modules with no build tools, compilers, or bundlers required.
 
+**Live Demo / Website**: [https://prathap2349.github.io/airdraw/](https://prathap2349.github.io/airdraw/)
+
 ---
 
 ## 1. Architectural Overview
 
-AirDraw shares a single webcam stream and MediaPipe `HandLandmarker` instance across both operational modes:
+AeroStudio shares a single webcam stream and MediaPipe `HandLandmarker` instance across both operational modes:
 
 ```
                                 [Webcam Stream (640x480 @ 30fps)]
@@ -30,7 +32,7 @@ AirDraw shares a single webcam stream and MediaPipe `HandLandmarker` instance ac
       - Coordinate Transformation (Cover/Mirror)      - 10-State Finite State Machine (FSM)
       - Stroke Vector Spline Generator                - Baseline-Anchored Drift-Free Zoom Engine
       - Real Eraser Geometric Collision Engine        - Procedural Universe Engine (Mulberry32 PRNG)
-      - Geometric Shape Snapping Classifier           - Galaxy Navigation HUD & Telemetry
+      - Geometric Shape Snapping Classifier           - Real-Time Diagnostic HUD (FPS, ms, Draw Calls)
       - Dual-Layer Offscreen Canvas Cache             - Hand Control Academy (8-Step Live Curriculum)
       - Raster (PNG) & Vector (SVG) Exporters         - Holographic Hand Skeleton Visualizer
       - Speech Recognition & Audio Synthesis          - Composite 3D Screenshot & MediaRecorder
@@ -58,9 +60,9 @@ A fully interactive 3D spatial environment rendered above the live webcam backgr
 
 #### Procedural Galaxy Universe Engine
 The procedural universe subsystem (`orb-universe.js`) generates multi-layered cosmic scenes from a deterministic 32-bit pseudo-random number generator (Mulberry32 PRNG):
-- **Multi-Galaxy System**: Simultaneous generation of multi-arm spiral galaxies, dwarf elliptical satellite galaxies, and starburst irregular galaxies with independent rotational axes and velocities.
+- **Multi-Galaxy System**: Simultaneous generation of tilted multi-arm spiral galaxies, dwarf elliptical satellite galaxies, and starburst irregular galaxies with independent rotational axes and velocities.
 - **Three-Tier Starfields**: Foreground bright stars with cross-diffraction spikes, midground field stars, and deep background cosmic dust clouds.
-- **Volumetric Nebulas**: Procedural gaseous emission clouds rendered using multi-octave additive point clusters.
+- **Soft Volumetric Nebulae**: Interstellar emission clouds rendered using multi-octave additive point clusters with radial gradient puff textures (eliminating artificial mesh boundaries).
 - **Relativistic Cosmic Bodies**:
   - Supermassive Black Hole (Sagittarius A*) with high-velocity swirling accretion disk and photon sphere.
   - Spacetime Wormhole Gateway with concentric counter-rotating ring arrays.
@@ -68,27 +70,56 @@ The procedural universe subsystem (`orb-universe.js`) generates multi-layered co
   - Constellation networks with luminous geometric vector bindings.
 
 #### 6 Selectable Cosmic Environments
-1. **Spiral Galaxy**: Double-arm logarithmic spiral galaxy with hot stellar core and outer star dust arms.
-2. **Nebula Universe**: Dense interstellar nebula clouds illuminated by embedded proto-star clusters.
+1. **Spiral Galaxy**: Double-arm logarithmic spiral galaxy tilted cinematically ($x = -\pi/3.4$, $z = \pi/7$) with dark dust lanes, controlled non-whitewashed core, and outer star dust arms.
+2. **Nebula Universe**: Dense interstellar nebula clouds illuminated by embedded proto-star clusters with multi-hue gas filaments (magenta, violet, cyan, emerald).
 3. **Deep Space**: Vast cosmic void populated by distant galaxies, quasars, and cold starfields.
 4. **Black Hole**: Supermassive singularity featuring an ultra-relativistic glowing accretion disk and gravitational event horizon.
 5. **Wormhole Gateway**: Hyperspace transit corridor constructed from counter-rotating geometric particle rings.
 6. **Golden Universe**: High-energy cosmic dawn characterized by radiant amber and gold stellar emissions.
 
 #### Submode 3D Environments
-1. **Classic Orbs**: Three interconnected floating energy spheres with tension lines and elastic collision dynamics.
+1. **Classic Orbs**: Three interconnected floating energy spheres with tension lines, elastic collision dynamics, and dynamic spawning up to 8 units.
 2. **Planet Mode**: Miniature solar system featuring all 8 planetary bodies (Mercury, Venus, Earth with orbiting Moon, Mars, Jupiter with atmospheric bands, Saturn with tilted double rings, Uranus with thin vertical ring, and Neptune) orbiting a radiant Sun with solar flare corona.
-3. **Galaxy Mode**: Procedural 3D universe with deterministic seed generation, multi-galaxy hierarchy, and deep space exploration.
+3. **Galaxy Mode**: Procedural 3D universe with deterministic seed generation, multi-galaxy hierarchy, macroscopic camera framing, and deep space exploration.
 4. **Atom Mode**: Quantum mechanical Bohr model featuring a dense 12-particle nucleus cluster (protons/neutrons) inside an energy shell, orbited by four high-speed electrons on inclined elliptical tracks.
 5. **Shape Morph Mode**: High-density point cloud (2,400 vertices) that smoothly interpolates between Sphere, Cube, Torus, and Pyramid without mesh rebuilding.
 6. **Fidget Mode**: Calming tactile space featuring five pastel floating spheres with soft harmonic spring physics and interactive repulsion.
 
 ---
 
-## 3. Hand Gesture & Navigation Engine
+## 3. Performance & Resource Architecture
 
-### 3.1 Stable Baseline-Based Zoom (Drift Elimination)
-Traditional distance-delta zoom algorithms suffer from cumulative drift because per-frame position deltas accumulate unevenly when hand jitter occurs. AirDraw implements an anchored baseline zoom system:
+AeroStudio includes an extensive performance architecture engineered for high frame rates and battery efficiency, including on Apple Silicon and integrated GPUs:
+
+### 3.1 Zero-Overhead Hardware Double Buffering
+- `preserveDrawingBuffer` is disabled (`false`) on the main `THREE.WebGLRenderer`, granting the GPU native access to high-speed hardware double-buffering.
+- Screenshot captures execute via synchronous `engine.renderForCapture()`, rendering the active frame directly prior to buffer transfer without persistent overhead during regular gameplay.
+
+### 3.2 Dual-Pipeline Execution Gating
+- When the user transitions to **Orb Mode**, the 2D canvas clearing, stroke path evaluations, offscreen cache blits, and 2D particle simulation loops are immediately halted.
+- When the browser tab is hidden or backgrounded (`document.visibilitychange`), Three.js rendering, physics simulation, and Web Audio oscillators automatically suspend to conserve CPU cycles and battery.
+
+### 3.3 Frame-Rate Independent Physics
+- All physical bodies, damping calculations, particle drift, and celestial rotations scale by delta time ($\Delta t \times 60$), ensuring identical kinematics regardless of display refresh rate (60Hz, 120Hz ProMotion, or 144Hz gaming monitors).
+
+### 3.4 Zero-Allocation Math & Garbage Collector Optimization
+- Scratch vectors (`THREE.Vector3`), raycast directions, and quaternion caches are preallocated across `orb-physics.js`, `orb-effects.js`, `orb-gestures.js`, and `orb-engine.js`, eliminating per-frame heap allocations and garbage collection spikes.
+
+### 3.5 Dynamic Quality Presets
+The application provides three immediate quality presets:
+- **PERFORMANCE**: Disabled post-processing bloom, clamped device pixel ratio ($1.0\times$), particle count reduction.
+- **BALANCED**: Controlled bloom pass, balanced resolution scaling ($1.25\times$), full starfield fidelity.
+- **HIGH**: Full UnrealBloom post-processing, native device pixel ratio (up to $2.0\times$), complete volumetric nebulae.
+
+### 3.6 Complete GPU Resource Lifecycle Management
+- To eliminate WebGL memory leaks, all dynamically spawned orbs, celestial meshes, particle point systems, textures, and point lights undergo recursive GPU disposal (`geometry.dispose()`, `material.dispose()`, `texture.dispose()`) whenever objects are dismissed, seeds regenerated, or modes switched.
+
+---
+
+## 4. Hand Gesture & Navigation Engine
+
+### 4.1 Stable Baseline-Based Zoom (Drift Elimination)
+Traditional distance-delta zoom algorithms suffer from cumulative drift because per-frame position deltas accumulate unevenly when hand jitter occurs. AeroStudio implements an anchored baseline zoom system:
 
 $$\Delta D = D_{\text{current}} - D_0$$
 
@@ -104,7 +135,7 @@ Where:
 
 Because $Z_{\text{target}}$ is anchored directly to the baseline distance difference $(\Delta D)$ rather than a continuous accumulator, holding hands at a constant distance locks the camera firmly in place with zero drift.
 
-### 3.2 10-State Finite State Machine (FSM)
+### 4.2 10-State Finite State Machine (FSM)
 Gesture transitions are managed through a deterministic state machine to eliminate input conflicts:
 
 ```
@@ -144,16 +175,17 @@ Gesture transitions are managed through a deterministic state machine to elimina
 | `GRABBING` | Single-hand pinch with raycast hit $\le 1.3$ units | Latches target sphere or selects celestial object |
 | `DRAGGING` | Pinched hand in motion | Translates grabbed object along camera plane |
 | `THROWING` | Pinch released while velocity $> 1.0$ unit/s | Imparts hand momentum to object with bounce damping |
-| `SPAWNING` | Both open palms held together ($< 0.22$ distance) | Generates new energy sphere between palms |
+| `SPAWNING` | Both open palms held together ($< 0.22$ distance) | Generates new energy sphere between palms (max 8, 1.2s cooldown) |
+| `DISMISSING`| Two hands pushed rapidly forward ($\Delta \text{scale} > 0.06$) | Dissolves all dynamic orbs with energy sweep |
 | `RESETTING` | Both fists held together ($< 0.38$ distance) for 380ms | Smoothly animates camera and scene back to origin |
 
 *Note: Pinching in empty space (raycast distance $> 1.3$ units) does not trigger `GRABBING`. This deliberate threshold allows two-hand navigation to operate reliably without accidental grabs.*
 
 ---
 
-## 4. Hand Control Academy & Training Arena
+## 5. Hand Control Academy & Training Arena
 
-AirDraw includes an interactive on-screen training curriculum (`orb-academy.js`) designed to guide new users through 3D hand interaction:
+AeroStudio includes an interactive on-screen training curriculum (`orb-academy.js`) designed to guide new users through 3D hand interaction:
 
 1. **Two-Hand Tracking**: Verifies camera framing and hand visibility.
 2. **Stable Zoom In**: Guides moving hands apart and verifies camera advance.
@@ -172,16 +204,17 @@ A sandboxed training environment isolating a single glowing test orb with real-t
 
 ---
 
-## 5. Galaxy Navigation HUD & Object Inspector
+## 6. Galaxy Navigation HUD & Object Inspector
 
-The Galaxy HUD (`orb-hud.js`) provides flight telemetry and celestial data overlays:
+The Galaxy HUD (`orb-hud.js`) provides flight telemetry, performance metrics, and celestial data overlays:
+- **Real-Time Performance Badge**: Displays FPS, frame execution latency (ms), WebGL draw calls, and rendered triangle counts.
 - **Telemetry Readout**: Real-time display of Active Environment, Universe Seed Number, Zoom Percentage, Travel Speed (km/s), and active Gesture FSM state.
 - **Manual Zoom Steppers**: Precision `[ + ]` and `[ - ]` buttons and range slider for micro-adjustments.
 - **Universe Control Bar**:
   - `Randomize`: Generates a new procedural universe with a randomized Mulberry32 seed.
-  - `Lock`: Preserves current seed in `localStorage` across sessions.
+  - `Lock`: Preserves current seed in browser storage across sessions.
   - `Restore`: Restores the previous seed configuration.
-  - `Reset Cam`: Instantly re-aligns camera and flight velocity to default origin.
+  - `Reset Cam`: Instantly re-aligns camera and flight velocity to macroscopic universe overview (`0, 3.8, 11.5`).
 - **Holographic Celestial Object Inspector**:
   - Pointing and pinching any celestial object opens a holographic inspection card displaying Object Classification, Estimated Mass (Solar Masses $M_\odot$), Distance (Light Years), and Astrophysical Description.
   - `Fly Here / Focus`: Automatically glides the camera into close orbital proximity of the selected object.
@@ -189,7 +222,7 @@ The Galaxy HUD (`orb-hud.js`) provides flight telemetry and celestial data overl
 
 ---
 
-## 6. Audio Synthesis Subsystem
+## 7. Audio Synthesis Subsystem
 
 Powered by the browser-native Web Audio API without external audio assets:
 - **Ambient Drone**: Continuous low-frequency drone (55Hz A1) modulated by a 0.2Hz sine LFO through a low-pass biquad filter.
@@ -206,21 +239,21 @@ Powered by the browser-native Web Audio API without external audio assets:
 
 ---
 
-## 7. Export & Persistence Systems
+## 8. Export & Persistence Systems
 
 - **Draw Mode Export**:
-  - Raster PNG (with active background or transparent alpha channel).
-  - Scalable Vector Graphics (SVG) with stroke path geometry.
-  - 2D Canvas WebM timelapse recording via `canvas.captureStream(30)`.
+  - Raster PNG (`aerostudio_*.png`) with active background or transparent alpha channel.
+  - Scalable Vector Graphics (`aerostudio_*.svg`) with stroke path geometry.
+  - 2D Canvas WebM timelapse recording (`aerostudio_timelapse_*.webm`) via `canvas.captureStream(30)`.
 - **Orb Mode 3D Export**:
-  - 3D Screenshot: Composites webcam video frame and WebGL canvas buffer into a high-resolution PNG image.
-  - 3D Video Recording: Records continuous 30fps WebM video with audio synthesis track via `MediaRecorder`.
-- **Session Persistence**: Debounced `localStorage` autosave preserves canvas artwork and user settings across reloads.
+  - 3D Screenshot (`aerostudio_3d_*.png`): Synchronously composites webcam video frame and WebGL canvas buffer into a high-resolution PNG image without requiring continuous frame preservation.
+  - 3D Video Recording (`aerostudio_3d_timelapse_*.webm`): Records continuous 30fps WebM video with audio synthesis track via `MediaRecorder`.
+- **Dual-Key Backward-Compatible Storage**: Reads and writes to `aerostudio_*` keys with automatic fallback to existing `airdraw_*` records, safeguarding previously saved artwork and preferences.
 - **Drawing Gallery**: Local catalog storing artwork snapshots, timestamps, and stroke datasets.
 
 ---
 
-## 8. Mouse & Touch Fallback
+## 9. Mouse & Touch Fallback
 
 When camera hardware or WebGL acceleration is unavailable, the application automatically transitions to pointer input:
 - **Draw Mode**: Click and drag to draw, erase, or manipulate vector strokes.
@@ -233,7 +266,7 @@ When camera hardware or WebGL acceleration is unavailable, the application autom
 
 ---
 
-## 9. Keyboard Shortcuts
+## 10. Keyboard Shortcuts
 
 | Shortcut | Context | Action |
 | :--- | :--- | :--- |
@@ -248,7 +281,7 @@ When camera hardware or WebGL acceleration is unavailable, the application autom
 
 ---
 
-## 10. Technical Specifications
+## 11. Technical Specifications
 
 - **Vision Runtime**: Google MediaPipe Tasks Vision (`@mediapipe/tasks-vision` 0.10.14)
 - **Model**: `hand_landmarker.task` (`float16` quantization)
@@ -261,7 +294,7 @@ When camera hardware or WebGL acceleration is unavailable, the application autom
 
 ---
 
-## 11. Local Deployment
+## 12. Local Deployment
 
 Because camera permissions require a secure context, serve the application over `http://localhost` or `https://`:
 
@@ -278,27 +311,28 @@ npx serve .
 
 ---
 
-## 12. Deployment to GitHub Pages
+## 13. Deployment to GitHub Pages
 
-1. Push repository changes to the `main` branch:
+1. Commit and push repository changes to the `main` branch:
    ```bash
    git add .
-   git commit -m "feat: complete galaxy universe upgrade"
+   git commit -m "feat: complete AeroStudio performance and visual upgrade"
    git push origin main
    ```
 2. In the GitHub repository, open **Settings** > **Pages**.
 3. Under **Branch**, select `main` and root directory `/`, then click **Save**.
-4. The live application will be served at `https://<username>.github.io/<repository>/`.
+4. The live application is deployed and accessible at:
+   - **Live Website / Demo:** [https://prathap2349.github.io/airdraw/](https://prathap2349.github.io/airdraw/)
 
 ---
 
-## 13. Troubleshooting & Diagnostics
+## 14. Troubleshooting & Diagnostics
 
 ### WebGL Hardware Acceleration
 1. Navigate to `chrome://settings/system`.
 2. Ensure **Use graphics acceleration when available** is enabled.
 3. Relaunch Chrome and close GPU-intensive browser tabs.
-4. *AirDraw automatically falls back to CPU execution if WebGL context allocation fails.*
+4. *AeroStudio automatically falls back to CPU execution if WebGL context allocation fails.*
 
 ### Camera Permissions
 1. Verify the application is served over `https://` or `http://localhost` (browsers restrict camera access on `file://`).
@@ -307,8 +341,9 @@ npx serve .
 
 ---
 
-## 14. Author & License
+## 15. Author & License
 
 - **Author**: Prathap ([GitHub](https://github.com/Prathap2349))
+- **Live Demo**: [https://prathap2349.github.io/airdraw/](https://prathap2349.github.io/airdraw/)
 - **Repository**: [Prathap2349/airdraw](https://github.com/Prathap2349/airdraw)
 - **License**: MIT License

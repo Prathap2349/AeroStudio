@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Air Draw - Real-Time Hand Tracking</title>
+    <title>AeroStudio — Hand-Controlled Creative Studio</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -98,7 +98,7 @@
     <!-- Initial Loading Overlay -->
     <div id="loading" class="overlay">
         <div class="loader"></div>
-        <p class="loading-title">Initializing Air Draw...</p>
+        <p class="loading-title">Initializing AeroStudio...</p>
         <p class="loading-sub" id="loading-status">Loading MediaPipe HandLandmarker AI model...</p>
         <button class="loading-skip-btn" id="btn-skip-to-mouse">Skip to Mouse / Touch Drawing</button>
     </div>
@@ -111,7 +111,7 @@
     <!-- Right Control Panel -->
     <aside class="panel" id="ui-panel">
         <div class="panel-header-wrap">
-            <h1 class="panel-header">AIR DRAW</h1>
+            <h1 class="panel-header">AEROSTUDIO</h1>
             <button class="panel-close-btn" id="btn-close-panel" title="Collapse Panel (H)">✕</button>
         </div>
 
@@ -301,6 +301,14 @@
                     <div class="hud-status-row">
                         <span class="hud-state-pill" id="hud-gesture-state">IDLE</span>
                         <span class="hud-subvalue" id="hud-hands-count">0 Hands</span>
+                    </div>
+                </div>
+                <div class="hud-meta-block hud-diag-block" title="Real-Time Engine Diagnostics">
+                    <span class="hud-label">DIAGNOSTICS</span>
+                    <div class="diag-stats-row">
+                        <span class="diag-stat-val val-green" id="diag-fps-val">60 FPS</span>
+                        <span class="diag-stat-sub" id="diag-frametime-val">16.6ms</span>
+                        <span class="diag-stat-sub" id="diag-calls-val">12 calls</span>
                     </div>
                 </div>
             </div>
@@ -570,7 +578,7 @@
     <div class="modal-backdrop hidden" id="tutorial-modal">
         <div class="modal-card">
             <div class="modal-header">
-                <h2>AIR DRAW GESTURE GUIDE</h2>
+                <h2>AEROSTUDIO GESTURE GUIDE</h2>
                 <button class="modal-close-btn" id="btn-close-tutorial">✕</button>
             </div>
             <div class="modal-body tutorial-grid">

@@ -32,6 +32,29 @@
 import { OrbEngine } from './orb-engine.js';
 import { OrbUIController } from './orb-ui.js';
 
+// Backward-compatible storage helper supporting AeroStudio with legacy fallback
+const Storage = {
+    getItem(key) {
+        try {
+            return localStorage.getItem('aerostudio_' + key) || localStorage.getItem('airdraw_' + key);
+        } catch (e) {
+            return null;
+        }
+    },
+    setItem(key, value) {
+        try {
+            localStorage.setItem('aerostudio_' + key, value);
+            localStorage.setItem('airdraw_' + key, value);
+        } catch (e) { }
+    },
+    removeItem(key) {
+        try {
+            localStorage.removeItem('aerostudio_' + key);
+            localStorage.removeItem('airdraw_' + key);
+        } catch (e) { }
+    }
+};
+
 // ============================================================================
 // 1. CONFIGURATION & GLOBAL STATE
 // ============================================================================
@@ -1778,7 +1801,7 @@ function exportPNG(includeBackground = true, transparent = false) {
     state.strokes.forEach(s => renderStroke(tempCtx, s));
 
     const link = document.createElement('a');
-    link.download = `airdraw_${Date.now()}.png`;
+    link.download = `aerostudio_${Date.now()}.png`;
     link.href = tempCanvas.toDataURL('image/png');
     link.click();
     showToast('💾 Artwork exported as PNG!');
@@ -1809,7 +1832,7 @@ function exportSVG() {
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.download = `airdraw_${Date.now()}.svg`;
+    link.download = `aerostudio_${Date.now()}.svg`;
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);
@@ -1846,7 +1869,7 @@ function toggleTimelapseRecording() {
                 const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.download = `airdraw_timelapse_${Date.now()}.webm`;
+                a.download = `aerostudio_timelapse_${Date.now()}.webm`;
                 a.href = url;
                 a.click();
                 URL.revokeObjectURL(url);
@@ -1881,7 +1904,7 @@ function debouncedAutosave() {
     clearTimeout(autosaveTimeout);
     autosaveTimeout = setTimeout(() => {
         try {
-            localStorage.setItem('airdraw_autosave', JSON.stringify(state.strokes));
+            Storage.setItem('autosave', JSON.stringify(state.strokes));
         } catch (e) {
             // Storage quota full or disabled
         }
@@ -1890,7 +1913,7 @@ function debouncedAutosave() {
 
 function restoreAutosave() {
     try {
-        const saved = localStorage.getItem('airdraw_autosave');
+        const saved = Storage.getItem('autosave');
         if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1911,7 +1934,7 @@ function saveCurrentToGallery() {
     }
 
     try {
-        const gallery = JSON.parse(localStorage.getItem('airdraw_gallery') || '[]');
+        const gallery = JSON.parse(Storage.getItem('gallery') || '[]');
         const thumb = DOM.canvas.toDataURL('image/jpeg', 0.5);
 
         gallery.unshift({
@@ -1921,7 +1944,7 @@ function saveCurrentToGallery() {
             thumb
         });
 
-        localStorage.setItem('airdraw_gallery', JSON.stringify(gallery));
+        Storage.setItem('gallery', JSON.stringify(gallery));
         showToast('🖼️ Drawing saved to your gallery!');
         renderGalleryGrid();
     } catch (e) {
@@ -1931,7 +1954,7 @@ function saveCurrentToGallery() {
 
 function renderGalleryGrid() {
     DOM.galleryGrid.innerHTML = '';
-    const gallery = JSON.parse(localStorage.getItem('airdraw_gallery') || '[]');
+    const gallery = JSON.parse(Storage.getItem('gallery') || '[]');
 
     if (gallery.length === 0) {
         DOM.galleryGrid.innerHTML = '<p style="color:var(--text-muted);font-size:12px;grid-column:1/-1;text-align:center;padding:20px;">No saved drawings yet.</p>';
@@ -1963,7 +1986,7 @@ function renderGalleryGrid() {
 
         card.querySelector('[data-action="delete"]').addEventListener('click', () => {
             gallery.splice(index, 1);
-            localStorage.setItem('airdraw_gallery', JSON.stringify(gallery));
+            Storage.setItem('gallery', JSON.stringify(gallery));
             renderGalleryGrid();
             showToast('🗑️ Drawing removed.');
         });
@@ -2181,7 +2204,7 @@ function showGestureHintToast() {
 
 // First-run tutorial check
 function checkTutorialFirstRun() {
-    if (!localStorage.getItem('airdraw_tutorial_seen')) {
+    if (!Storage.getItem('tutorial_seen')) {
         DOM.tutorialModal.classList.remove('hidden');
     }
 }
@@ -2205,7 +2228,7 @@ function handleInitError(code, err) {
 
     if (code === 'CAMERA_PERMISSION_ERROR') {
         title = 'Camera Access Denied or Unavailable';
-        message = 'Air Draw requires camera access for hand tracking in the air.';
+        message = 'AeroStudio requires camera access for hand tracking in the air.';
         tips = 'Click the <strong>camera icon in your Chrome address bar</strong> and select <strong>"Always allow"</strong>, then refresh. You can also draw right now using Mouse or Touch below!';
     } else if (code === 'LANDMARKER_CREATE_ERROR' || code === 'WASM_LOAD_ERROR') {
         title = 'WebGL / Hardware Acceleration Issue';
@@ -2227,36 +2250,46 @@ function handleInitError(code, err) {
 // ============================================================================
 /**
  * Main 60fps render loop:
- *  1. Clears display canvas
+ *  1. Only executes 2D canvas draws when in DRAW mode and tab is visible (zero waste in ORB mode)
  *  2. Blits the cached offscreen canvas containing finished strokes (O(1))
  *  3. Draws currently active stroke (if drawing)
  *  4. Draws particles and visual effects
  *  5. Draws custom interactive cursors and hover indicators
  */
 function render() {
-    const ctx = DOM.canvasCtx;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    if (state.appMode === 'DRAW' && !document.hidden) {
+        const ctx = DOM.canvasCtx;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
 
-    // 1. Clear screen
-    ctx.clearRect(0, 0, w, h);
+        // 1. Clear screen
+        ctx.clearRect(0, 0, w, h);
 
-    // 2. Fast blit of all completed strokes from offscreen cache (Retina scaled)
-    ctx.drawImage(offscreenCanvas, 0, 0, w, h);
+        // 2. Fast blit of all completed strokes from offscreen cache (Retina scaled)
+        ctx.drawImage(offscreenCanvas, 0, 0, w, h);
 
-    // 3. Draw active stroke in progress
-    if (state.currentStroke) {
-        renderStroke(ctx, state.currentStroke);
+        // 3. Draw active stroke in progress
+        if (state.currentStroke) {
+            renderStroke(ctx, state.currentStroke);
+        }
+
+        // 4. Update & draw trailing particles
+        particles.updateAndDraw(ctx);
+
+        // 5. Draw Cursors & Interaction affordances
+        drawInteractiveCursor(ctx);
     }
-
-    // 4. Update & draw trailing particles
-    particles.updateAndDraw(ctx);
-
-    // 5. Draw Cursors & Interaction affordances
-    drawInteractiveCursor(ctx);
 
     requestAnimationFrame(render);
 }
+
+// Tab visibility throttle to prevent background battery/GPU drain
+document.addEventListener('visibilitychange', () => {
+    const isVisible = !document.hidden;
+    if (window.OrbEngine && typeof window.OrbEngine.onVisibilityChange === 'function') {
+        window.OrbEngine.onVisibilityChange(isVisible);
+    }
+});
 
 function drawInteractiveCursor(ctx) {
     let cursorPos = null;
@@ -2508,7 +2541,7 @@ function initUIEventListeners() {
     });
     DOM.btnSaveCurrentToGallery.addEventListener('click', () => saveCurrentToGallery());
     DOM.btnClearGallery.addEventListener('click', () => {
-        localStorage.removeItem('airdraw_gallery');
+        Storage.removeItem('gallery');
         renderGalleryGrid();
         showToast('🗑️ Gallery cleared');
     });
@@ -2521,7 +2554,7 @@ function initUIEventListeners() {
     DOM.btnOpenTutorial.addEventListener('click', () => DOM.tutorialModal.classList.remove('hidden'));
     DOM.btnCloseTutorial.addEventListener('click', () => DOM.tutorialModal.classList.add('hidden'));
     DOM.btnStartDrawing.addEventListener('click', () => {
-        localStorage.setItem('airdraw_tutorial_seen', 'true');
+        Storage.setItem('tutorial_seen', 'true');
         DOM.tutorialModal.classList.add('hidden');
     });
 

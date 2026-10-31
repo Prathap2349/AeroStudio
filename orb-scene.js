@@ -174,6 +174,28 @@ export class EnergyOrb {
         this.mergedWith = null;
         this.visible = true;
     }
+
+    dispose() {
+        if (this.coreMesh) {
+            if (this.coreMesh.geometry) this.coreMesh.geometry.dispose();
+            if (this.coreMaterial) this.coreMaterial.dispose();
+        }
+        if (this.shellMesh) {
+            if (this.shellMesh.geometry) this.shellMesh.geometry.dispose();
+            if (this.shellMaterial) this.shellMaterial.dispose();
+        }
+        if (this.innerRingMesh) {
+            if (this.innerRingMesh.geometry) this.innerRingMesh.geometry.dispose();
+            if (this.ringMaterial) this.ringMaterial.dispose();
+        }
+        if (this.light) {
+            this.mesh.remove(this.light);
+            this.light.dispose();
+        }
+        while (this.mesh.children.length > 0) {
+            this.mesh.remove(this.mesh.children[0]);
+        }
+    }
 }
 
 export class OrbSceneManager {
@@ -182,6 +204,10 @@ export class OrbSceneManager {
         this.orbs = [];
         this.tensionLines = [];
         this.lights = [];
+        this.maxOrbs = 8;
+        this.lastSpawnTimestamp = 0;
+        this.spawnCooldownMs = 1200;
+        this.visible = true;
 
         this.initLights();
         this.initCoreOrbs();
@@ -278,24 +304,55 @@ export class OrbSceneManager {
     }
 
     spawnOrb(position = null, colorHex = null) {
+        const now = performance.now();
+        // Prevent accidental repeated spawning with cooldown
+        if (now - this.lastSpawnTimestamp < this.spawnCooldownMs) {
+            return null;
+        }
+
+        // Enforce max orbs cap to avoid performance degradation
+        if (this.orbs.length >= this.maxOrbs) {
+            // Flash newest spawned orb to indicate cap reached
+            const last = this.orbs[this.orbs.length - 1];
+            if (last) last.flashGlow(2.0);
+            return null;
+        }
+
+        this.lastSpawnTimestamp = now;
         const id = 'orb-spawned-' + Date.now();
         const color = colorHex || (Math.random() > 0.5 ? 0x00ff88 : 0x9d00ff);
         const spawnPos = position ? position.clone() : new THREE.Vector3((Math.random() - 0.5) * 2, 0, 0);
 
         const newOrb = new EnergyOrb(id, 'Energy Sphere', color, spawnPos, 0.48);
+        newOrb.visible = this.visible;
+        if (newOrb.mesh) newOrb.mesh.visible = this.visible;
         this.orbs.push(newOrb);
         this.scene.add(newOrb.mesh);
 
         return newOrb;
     }
 
+    setVisible(visible) {
+        this.visible = visible;
+        this.orbs.forEach(orb => {
+            orb.visible = visible;
+            if (orb.mesh) orb.mesh.visible = visible;
+        });
+        this.tensionLines.forEach(({ line }) => {
+            if (line) line.visible = visible;
+        });
+    }
+
     dismissOrbs() {
-        // Keep default 3, dismiss any dynamically spawned orbs, or reset positions
+        // Keep default 3 orbs, properly dispose all dynamically spawned orbs
         for (let i = this.orbs.length - 1; i >= 3; i--) {
             const orb = this.orbs[i];
             this.scene.remove(orb.mesh);
+            orb.dispose();
             this.orbs.splice(i, 1);
         }
+
+        // Animate default 3 orbs with flash glow and reset
         this.orbs.forEach(o => {
             o.flashGlow(2.5);
             o.targetScale = 0.1;
@@ -307,10 +364,13 @@ export class OrbSceneManager {
 
     reset() {
         this.orbs.forEach(orb => orb.reset());
-        this.updateTensionLines();
+        if (this.visible) {
+            this.updateTensionLines();
+        }
     }
 
     update(time, dt) {
+        if (!this.visible) return;
         this.orbs.forEach(orb => orb.update(time, dt));
         this.updateTensionLines();
     }

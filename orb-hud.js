@@ -203,9 +203,14 @@ export class OrbHUD {
         const soundVal = document.getElementById('setting-sound-val');
         const toggleSkel = document.getElementById('setting-toggle-skeleton');
 
-        // Load persisted settings
+        // Diagnostic elements
+        this.txtFpsVal = document.getElementById('diag-fps-val');
+        this.txtFrameTimeVal = document.getElementById('diag-frametime-val');
+        this.txtCallsVal = document.getElementById('diag-calls-val');
+
+        // Load persisted settings (AeroStudio with legacy fallback)
         try {
-            const saved = localStorage.getItem('airdraw_orb_settings');
+            const saved = localStorage.getItem('aerostudio_orb_settings') || localStorage.getItem('airdraw_orb_settings');
             if (saved) {
                 const s = JSON.parse(saved);
                 if (zoomSens && s.zoomSens) { zoomSens.value = s.zoomSens; zoomVal.textContent = s.zoomSens; }
@@ -227,7 +232,9 @@ export class OrbHUD {
                 skeleton: toggleSkel ? toggleSkel.checked : true
             };
             try {
-                localStorage.setItem('airdraw_orb_settings', JSON.stringify(settings));
+                const json = JSON.stringify(settings);
+                localStorage.setItem('aerostudio_orb_settings', json);
+                localStorage.setItem('airdraw_orb_settings', json);
             } catch (e) { }
 
             // Apply directly to controllers
@@ -364,6 +371,22 @@ export class OrbHUD {
         if (this.txtHandsCount) {
             this.txtHandsCount.textContent = telemetry.handsCount === 0 ? 'No Hands' :
                 (telemetry.handsCount === 1 ? '1 Hand' : '2 Hands');
+        }
+    }
+
+    updateDiagnostics(metrics) {
+        if (!metrics) return;
+        if (this.txtFpsVal) {
+            this.txtFpsVal.textContent = `${metrics.fps} FPS`;
+            if (metrics.fps >= 50) this.txtFpsVal.className = 'diag-stat-val val-green';
+            else if (metrics.fps >= 30) this.txtFpsVal.className = 'diag-stat-val val-amber';
+            else this.txtFpsVal.className = 'diag-stat-val val-red';
+        }
+        if (this.txtFrameTimeVal) {
+            this.txtFrameTimeVal.textContent = `${metrics.frameTime.toFixed(1)}ms`;
+        }
+        if (this.txtCallsVal) {
+            this.txtCallsVal.textContent = `${metrics.drawCalls} calls`;
         }
     }
 }

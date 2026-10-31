@@ -24,9 +24,16 @@ export class OrbPhysics {
         // Merge & Split state
         this.mergeDistance = 0.75;
         this.splitDistance = 1.8;
+
+        // Reusable scratch vectors to avoid GC allocations
+        this._prevPos = new THREE.Vector3();
     }
 
     update(orbs, dt) {
+        // Time-scaled damping factor for 60fps baseline
+        const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
+        const timeDamping = Math.pow(this.damping, safeDt * 60);
+
         for (let i = 0; i < orbs.length; i++) {
             const orb = orbs[i];
             if (!orb.visible) continue;
@@ -34,21 +41,21 @@ export class OrbPhysics {
             // 1. If currently grabbed: smooth follow target position and track throw velocity
             if (orb.isGrabbed) {
                 const targetPos = orb.targetPosition;
-                const prevPos = orb.mesh.position.clone();
+                this._prevPos.copy(orb.mesh.position);
 
                 // Smooth interpolation toward hand target
                 orb.mesh.position.lerp(targetPos, this.dragSmoothing);
 
                 // Track instantaneous velocity vector for throwing
-                orb.velocity.subVectors(orb.mesh.position, prevPos).multiplyScalar(1 / Math.max(dt, 0.01));
+                orb.velocity.subVectors(orb.mesh.position, this._prevPos).multiplyScalar(1 / safeDt);
 
                 // Smooth scale towards target scale (Expand/Shrink)
                 orb.currentScale = THREE.MathUtils.lerp(orb.currentScale, orb.targetScale, 0.15);
                 orb.mesh.scale.set(orb.currentScale, orb.currentScale, orb.currentScale);
             } else {
                 // 2. Free flight physics
-                orb.mesh.position.addScaledVector(orb.velocity, dt);
-                orb.velocity.multiplyScalar(this.damping);
+                orb.mesh.position.addScaledVector(orb.velocity, safeDt);
+                orb.velocity.multiplyScalar(timeDamping);
 
                 // Stop micro-jitters
                 if (orb.velocity.lengthSq() < 0.0001) {

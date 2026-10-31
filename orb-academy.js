@@ -140,7 +140,7 @@ export class OrbAcademy {
 
         // Auto-show on first visit if not completed
         try {
-            const completed = localStorage.getItem('airdraw_academy_completed');
+            const completed = localStorage.getItem('aerostudio_academy_completed') || localStorage.getItem('airdraw_academy_completed');
             if (!completed) {
                 // Will show when user first enters Orb Mode
             }
@@ -204,6 +204,7 @@ export class OrbAcademy {
 
     markCompleted() {
         try {
+            localStorage.setItem('aerostudio_academy_completed', 'true');
             localStorage.setItem('airdraw_academy_completed', 'true');
         } catch (e) { }
         if (this.engine && this.engine.audio) {

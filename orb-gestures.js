@@ -59,6 +59,10 @@ export class OrbGestureController {
         this.prevAverageDepth = null;
         this.pushCooldown = 0;
 
+        // Reusable scratch vectors to avoid GC allocations
+        this._ndcVec = new THREE.Vector3();
+        this._dirVec = new THREE.Vector3();
+
         // Real-Time Tracking Telemetry
         this.trackingStatus = {
             handsCount: 0,
@@ -95,12 +99,13 @@ export class OrbGestureController {
         const ndcX = (1.0 - normalizedX) * 2 - 1; // Mirrored webcam
         const ndcY = -(normalizedY * 2 - 1);
 
-        const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
-        vector.unproject(this.camera);
-        const dir = vector.sub(this.camera.position).normalize();
+        this._ndcVec.set(ndcX, ndcY, 0.5);
+        this._ndcVec.unproject(this.camera);
+        this._dirVec.subVectors(this._ndcVec, this.camera.position).normalize();
 
-        const distance = (depthZ - this.camera.position.z) / dir.z;
-        return this.camera.position.clone().add(dir.multiplyScalar(distance));
+        const dz = this._dirVec.z !== 0 ? this._dirVec.z : 0.0001;
+        const distance = (depthZ - this.camera.position.z) / dz;
+        return this.camera.position.clone().addScaledVector(this._dirVec, distance);
     }
 
     processHands(handsData, timestamp) {
@@ -144,9 +149,9 @@ export class OrbGestureController {
             const avgScale = (hand1.handScale + hand2.handScale) / 2;
             if (this.prevAverageDepth !== null) {
                 const scaleDelta = avgScale - this.prevAverageDepth;
-                if (scaleDelta > 40 && hand1.isOpenHand && hand2.isOpenHand) {
+                if (scaleDelta > 0.06 && hand1.isOpenHand && hand2.isOpenHand) {
                     this.executeDismiss();
-                    this.pushCooldown = timestamp + 1800;
+                    this.pushCooldown = timestamp + 1600;
                     this.prevAverageDepth = null;
                     return;
                 }
@@ -366,6 +371,7 @@ export class OrbGestureController {
     }
 
     findClosestOrb(point, maxThreshold = 1.3) {
+        if (!this.sceneManager || !this.sceneManager.visible) return null;
         let closest = null;
         let minDist = Infinity;
 
