@@ -1215,3 +1215,334 @@ input[type="range"]:focus {
         left: 14px;
     }
 }
+
+/* ==========================================================================
+   ORB MODE 3D INTERACTION STYLES
+   ========================================================================== */
+
+/* Mode Switcher Pill in Top Bar */
+.mode-switcher {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(14, 16, 26, 0.85);
+    border: 1px solid var(--panel-border);
+    border-radius: 30px;
+    padding: 3px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-header);
+    font-size: 11px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+}
+
+.mode-btn .mode-icon {
+    font-size: 13px;
+}
+
+.mode-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.mode-btn.active {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.25), rgba(255, 0, 127, 0.25));
+    border: 1px solid rgba(0, 255, 255, 0.45);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.35);
+    font-weight: 700;
+}
+
+/* 3D Canvases */
+.orb_canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4;
+    cursor: grab;
+    pointer-events: auto;
+}
+
+.orb_canvas:active {
+    cursor: grabbing;
+}
+
+.skeleton_canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* Orb Mode UI Container */
+.orb-ui-container {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+/* Top Status Card */
+.orb-status-card {
+    position: fixed;
+    top: 76px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(14, 18, 30, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 255, 255, 0.35);
+    border-radius: 30px;
+    padding: 8px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 255, 255, 0.15);
+    pointer-events: auto;
+    animation: banner-enter 0.3s ease-out;
+}
+
+.status-tag {
+    font-family: var(--font-header);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.tag-two-hands {
+    background: rgba(0, 255, 136, 0.2);
+    border: 1px solid var(--green);
+    color: var(--green);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.tag-one-hand {
+    background: rgba(255, 170, 0, 0.2);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+}
+
+.tag-no-hands {
+    background: rgba(160, 160, 180, 0.15);
+    border: 1px solid rgba(160, 160, 180, 0.4);
+    color: var(--text-muted);
+}
+
+.orb-gesture-text {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* Floating Side Controls */
+.orb-side-controls {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 210px;
+    pointer-events: auto;
+    z-index: 26;
+}
+
+.orb-control-card {
+    background: rgba(14, 18, 30, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7);
+}
+
+.orb-panel-title {
+    font-family: var(--font-header);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: var(--cyan);
+    text-align: center;
+    margin-bottom: 2px;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+}
+
+.orb-tool-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.orb-tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 6px;
+    color: #fff;
+    font-family: var(--font-body);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.orb-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.orb-tool-btn.full-width {
+    width: 100%;
+}
+
+.orb-tool-btn.recording {
+    background: rgba(255, 0, 50, 0.25);
+    border-color: #ff3344;
+    color: #ff3344;
+    box-shadow: 0 0 15px rgba(255, 0, 50, 0.4);
+}
+
+.orb-divider {
+    height: 1px;
+    background: var(--panel-border);
+    margin: 4px 0;
+}
+
+.orb-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.orb-select-group label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.orb-select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    color: #fff;
+    padding: 6px 8px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+}
+
+.orb-select option {
+    background: #0d111d;
+    color: #fff;
+}
+
+/* Bottom Submodes Dock */
+.orb-bottom-dock {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: auto;
+    z-index: 26;
+}
+
+.orb-submodes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(14, 18, 30, 0.88);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--panel-border);
+    border-radius: 40px;
+    padding: 6px 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 255, 255, 0.15);
+}
+
+.orb-submode-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid transparent;
+    border-radius: 30px;
+    padding: 8px 14px;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.orb-submode-btn .submode-icon {
+    font-size: 14px;
+}
+
+.orb-submode-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.orb-submode-btn.active {
+    background: rgba(0, 255, 255, 0.2);
+    border-color: var(--cyan);
+    color: #fff;
+    box-shadow: 0 0 14px rgba(0, 255, 255, 0.35);
+    font-weight: 700;
+}
+
+/* Responsive Orb Controls */
+@media (max-width: 900px) {
+    .orb-side-controls {
+        top: auto;
+        bottom: 84px;
+        right: 12px;
+        transform: none;
+        width: 170px;
+    }
+
+    .orb-submodes {
+        overflow-x: auto;
+        max-width: 92vw;
+        padding: 4px 8px;
+    }
+
+    .orb-submode-btn {
+        padding: 6px 10px;
+        font-size: 10px;
+    }
+}
+

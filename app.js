@@ -29,6 +29,9 @@
  * ============================================================================
  */
 
+import { OrbEngine } from './orb-engine.js';
+import { OrbUIController } from './orb-ui.js';
+
 // ============================================================================
 // 1. CONFIGURATION & GLOBAL STATE
 // ============================================================================
@@ -64,6 +67,7 @@ const COLORS = [
 ];
 
 const state = {
+    appMode: 'DRAW',         // 'DRAW' | 'ORB'
     // Canvas & strokes
     strokes: [],             // All committed strokes
     currentStroke: null,     // Stroke currently being drawn by dominant hand
@@ -1260,6 +1264,32 @@ async function startCamera() {
     }
 }
 
+// ============================================================================
+// MODE SWITCHER (DRAW MODE <-> ORB 3D MODE)
+// ============================================================================
+window.setAppMode = function(mode) {
+    if (state.appMode === mode) return;
+    state.appMode = mode;
+
+    if (mode === 'ORB') {
+        if (state.currentStroke) finalizeActiveStroke();
+        DOM.uiPanel.classList.add('hidden');
+        DOM.canvas.style.pointerEvents = 'none';
+
+        if (window.OrbUI) window.OrbUI.setMode('ORB');
+        if (window.OrbEngine) window.OrbEngine.start();
+        showToast('🔮 Orb Mode Active: Two-Hand 3D Holographic Interaction');
+    } else {
+        if (window.OrbEngine) window.OrbEngine.stop();
+        if (window.OrbUI) window.OrbUI.setMode('DRAW');
+
+        DOM.uiPanel.classList.remove('hidden');
+        DOM.canvas.style.pointerEvents = 'auto';
+        showToast('✏️ Draw Mode Active');
+        redrawOffscreenCanvas();
+    }
+};
+
 // Adaptive detection throttling if FPS drops
 let lastFrameTime = performance.now();
 let fpsCounter = 60;
@@ -1285,7 +1315,13 @@ function predictWebcamLoop() {
             lastVideoTime = DOM.webcam.currentTime;
             try {
                 const results = handLandmarker.detectForVideo(DOM.webcam, now);
-                processLandmarkResults(results, now);
+                if (state.appMode === 'ORB') {
+                    if (window.OrbEngine && window.OrbEngine.isActive) {
+                        window.OrbEngine.handleLandmarks(results, now);
+                    }
+                } else {
+                    processLandmarkResults(results, now);
+                }
             } catch (err) {
                 console.error('Detection frame error:', err);
             }
@@ -2521,6 +2557,15 @@ async function startApp() {
 
     // Boot vision & camera
     await initHandLandmarker();
+
+    // Initialize Orb Mode 3D Experience (Additive Subsystem)
+    try {
+        window.OrbEngine = new OrbEngine();
+        window.OrbUI = new OrbUIController(window.OrbEngine);
+        console.log('✅ Orb 3D Experience initialized successfully.');
+    } catch (orbErr) {
+        console.warn('Orb Mode initialization deferred:', orbErr);
+    }
 }
 
 // Launch

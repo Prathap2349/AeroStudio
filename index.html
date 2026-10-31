@@ -13,6 +13,16 @@
         rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
+
+    <!-- Three.js Import Map (Pure Vanilla ES Modules, Zero Build Step) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
 </head>
 
 <body class="bg-mirror">
@@ -22,6 +32,8 @@
         <video class="input_video" id="webcam" autoplay playsinline muted></video>
         <div class="bg-layer" id="bg-layer"></div>
         <canvas class="output_canvas" id="canvas"></canvas>
+        <canvas class="orb_canvas hidden" id="orb-canvas"></canvas>
+        <canvas class="skeleton_canvas hidden" id="skeleton-canvas"></canvas>
     </div>
 
     <!-- Friendly Error / Help Banner (Replaces alert() calls) -->
@@ -49,6 +61,18 @@
         </div>
 
         <div class="top-bar-center">
+            <!-- Application Mode Switcher (Draw Mode vs Orb 3D Mode) -->
+            <div class="mode-switcher" id="mode-switcher" title="Switch Creative Experience">
+                <button class="mode-btn active" id="btn-mode-draw" title="Draw Mode: 2D Hand Air Canvas">
+                    <span class="mode-icon">✏️</span>
+                    <span class="mode-label">Draw Mode</span>
+                </button>
+                <button class="mode-btn" id="btn-mode-orb" title="Orb Mode: Two-Hand 3D Interactive Universe">
+                    <span class="mode-icon">🔮</span>
+                    <span class="mode-label">Orb Mode (3D)</span>
+                </button>
+            </div>
+
             <span class="rec-indicator hidden" id="rec-indicator">
                 <span class="rec-dot"></span>
                 <span class="rec-text" id="rec-timer">REC 00:00</span>
@@ -240,6 +264,101 @@
             </button>
         </div>
     </aside>
+
+    <!-- Orb Mode 3D UI Overlay -->
+    <div id="orb-ui-container" class="orb-ui-container hidden">
+        <!-- Orb Gesture Status Card -->
+        <div class="orb-status-card" id="orb-gesture-hint">
+            <span class="status-tag tag-no-hands" id="orb-hands-count">No Hands Detected</span>
+            <span class="orb-gesture-text" id="orb-gesture-text">Bring both hands into view to interact.</span>
+        </div>
+
+        <!-- Orb Floating Side Controls -->
+        <aside class="orb-side-controls" id="orb-controls">
+            <div class="orb-control-card">
+                <span class="orb-panel-title">ORB 3D CONTROLS</span>
+                
+                <div class="orb-tool-row">
+                    <button class="orb-tool-btn" id="btn-orb-spawn" title="Spawn New Energy Sphere (Gesture: Both Open Palms)">
+                        <span class="icon">✨</span>
+                        <span class="label">Spawn</span>
+                    </button>
+                    <button class="orb-tool-btn" id="btn-orb-dismiss" title="Dismiss Spheres (Gesture: Two-Hand Push)">
+                        <span class="icon">💨</span>
+                        <span class="label">Dismiss</span>
+                    </button>
+                </div>
+
+                <div class="orb-tool-row">
+                    <button class="orb-tool-btn" id="btn-orb-reset" title="Reset Camera & Positions (Gesture: Both Fists Together)">
+                        <span class="icon">🔄</span>
+                        <span class="label">Reset</span>
+                    </button>
+                    <button class="orb-tool-btn" id="btn-orb-screenshot" title="Capture 3D Screenshot (PNG)">
+                        <span class="icon">📸</span>
+                        <span class="label">Capture</span>
+                    </button>
+                </div>
+
+                <button class="orb-tool-btn full-width" id="btn-orb-record" title="Record 3D Timelapse Video (WebM)">
+                    <span class="icon">🎥</span>
+                    <span class="btn-label">Record 3D</span>
+                </button>
+
+                <div class="orb-divider"></div>
+
+                <div class="orb-select-group">
+                    <label for="orb-style-select">MATERIAL STYLE</label>
+                    <select id="orb-style-select" class="orb-select">
+                        <option value="plasma" selected>Plasma Energy</option>
+                        <option value="wireframe">Wireframe Globe</option>
+                        <option value="glass">Glass Bubble</option>
+                        <option value="core">Glowing Core</option>
+                        <option value="planet">Planet Surface</option>
+                    </select>
+                </div>
+
+                <div class="orb-select-group">
+                    <label for="orb-quality-select">QUALITY PRESET</label>
+                    <select id="orb-quality-select" class="orb-select">
+                        <option value="HIGH">High (UnrealBloom + HD)</option>
+                        <option value="BALANCED" selected>Balanced (Standard)</option>
+                        <option value="PERFORMANCE">Performance (Optimized)</option>
+                    </select>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Orb Bottom Submode Dock -->
+        <div class="orb-bottom-dock">
+            <div class="orb-submodes" id="orb-submodes">
+                <button class="orb-submode-btn active" data-submode="classic" title="Classic Three Energy Spheres">
+                    <span class="submode-icon">🔮</span>
+                    <span class="submode-label">Orbs</span>
+                </button>
+                <button class="orb-submode-btn" data-submode="planet" title="Miniature Solar System">
+                    <span class="submode-icon">🪐</span>
+                    <span class="submode-label">Planet</span>
+                </button>
+                <button class="orb-submode-btn" data-submode="galaxy" title="Spiral Particle Galaxy">
+                    <span class="submode-icon">🌌</span>
+                    <span class="submode-label">Galaxy</span>
+                </button>
+                <button class="orb-submode-btn" data-submode="atom" title="Interactive Atomic Model">
+                    <span class="submode-icon">⚛️</span>
+                    <span class="submode-label">Atom</span>
+                </button>
+                <button class="orb-submode-btn" data-submode="morph" title="Morphing Geometry (Sphere, Cube, Torus, Pyramid)">
+                    <span class="submode-icon">🔷</span>
+                    <span class="submode-label">Morph</span>
+                </button>
+                <button class="orb-submode-btn" data-submode="fidget" title="Zen Calming Soft Spheres">
+                    <span class="submode-icon">🌸</span>
+                    <span class="submode-label">Fidget</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- First-Run Tutorial Modal -->
     <div class="modal-backdrop hidden" id="tutorial-modal">

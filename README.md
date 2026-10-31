@@ -1,122 +1,152 @@
-# AirDraw: Real-Time Hand-Tracking Drawing System
+# AirDraw: Real-Time Hand-Tracking Drawing & 3D Orb System
 
-AirDraw is a browser-based computer vision application that enables touchless, real-time drawing and spatial manipulation through a standard webcam. Powered by MediaPipe Tasks Vision (`HandLandmarker`), the system executes entirely on the client side using pure HTML5, CSS3, and modern ECMAScript modules with zero build steps or external bundler dependencies.
+AirDraw is a browser-based computer vision system that unifies two distinct creative experiences in a single client-side application:
+
+1. **Draw Mode**: High-precision 2D air canvas powered by Google MediaPipe Tasks Vision (`HandLandmarker`), enabling touchless vector drawing, multiple brush dynamics, geometric shape recognition, and spatial stroke manipulation.
+2. **Orb Mode**: A two-hand 3D holographic energy environment built with Three.js, enabling spatial manipulation of floating energy spheres, dynamic tension fields, particle systems, and five distinct cosmological environments.
+
+The entire system executes client-side using pure HTML5, CSS3, Three.js, and modern ECMAScript modules with zero build steps or bundler dependencies.
 
 ---
 
 ## 1. Architectural Overview
 
-AirDraw is architectured around a decoupled vision-processing and rendering pipeline:
+AirDraw shares a single webcam stream and MediaPipe `HandLandmarker` instance across both operational modes:
 
 ```
-[Webcam Stream (640x480)]
-          │
-          ▼
-[MediaPipe Tasks Vision] ──(GPU / CPU Fallback)──> [21 Normalized 3D Landmarks]
-                                                              │
-          ┌───────────────────────────────────────────────────┴───────────────────────────────┐
-          ▼                                                                                   ▼
-[Coordinate Transformation Engine]                                            [Rotation-Invariant Gesture Classifier]
-  - Aspect Ratio Compensation                                                   - Joint Distance Ratios
-  - Object-Fit Cover Alignment                                                  - Normalized Pinch Hysteresis
-  - Mirror Inversion Mapping                                                    - Temporal Debounce Filter (4 frames)
-          │                                                                                   │
-          ▼                                                                                   ▼
-[One Euro (1€) Adaptive Filter]                                                [Application State Machine]
-  - Low-Velocity Jitter Elimination                                              - Modes: DRAW, MOVE, ERASE, POINTER
-  - High-Velocity Lag Minimization                                               - Multi-Hand Transform Coordinator
-          │                                                                                   │
-          └───────────────────────────────────┬───────────────────────────────────────────────┘
-                                              ▼
-                                 [Dual-Layer Canvas Compositor]
-                   ┌──────────────────────────┴──────────────────────────┐
-                   ▼                                                     ▼
-     [Offscreen Static Cache]                              [Active Frame Compositor]
-     - Committed Vector Strokes                            - Active Stroke Splines
-     - Rendered on State Mutations Only (O(1))             - Custom Mode Cursors
-                                                           - Particle Sparkle Effects
-                                                           - Radial Progress Indicators
+                                [Webcam Stream (640x480)]
+                                            │
+                                            ▼
+                           [MediaPipe Tasks Vision Runtime]
+                             (GPU / CPU Adaptive Fallback)
+                                            │
+                                            ▼
+                           [Multi-Hand Landmarks & Handedness]
+                                            │
+                    ┌───────────────────────┴───────────────────────┐
+                    ▼                                               ▼
+         [Draw Mode Pipeline]                             [Orb Mode 3D Pipeline]
+  - 1€ (One Euro) Adaptive Smoothing              - Three.js WebGL Scene & Camera
+  - Coordinate Transformation (Cover/Mirror)      - OrbGestureController (9 Two-Hand Gestures)
+  - Stroke Vector Spline Generator                - OrbPhysics (Elastic Collisions, Throwing, Merge/Split)
+  - Real Eraser Collision Engine                  - OrbEffects (Bloom Post-Processing, Particles, Shockwaves)
+  - Geometric Shape Snapping Classifier           - OrbModes (Planet, Galaxy, Atom, Morph, Fidget)
+  - Dual-Layer Offscreen Canvas Cache             - Holographic Hand Skeleton Overlay
+  - Raster (PNG) & Vector (SVG) Exporters         - Composite 3D Screenshot & MediaRecorder
 ```
 
 ---
 
-## 2. Core Capabilities
+## 2. Creative Experiences
 
-### 2.1 Computer Vision & Hand Pose Tracking
-- **MediaPipe Tasks Vision HandLandmarker**: Replaces legacy MediaPipe wrappers with the latest task-based runtime (`@mediapipe/tasks-vision` 0.10.14) loading the `float16` hand landmark model.
-- **Automated GPU-to-CPU Fallback**: Initializes the WebGL GPU delegate first. If hardware allocation or WebGL context creation fails, the engine catches the exception and falls back to CPU execution without interrupting user workflow.
-- **Optimized Stream Resolution**: Streams at `640x480` at 30fps to balance spatial accuracy with low inference latency.
-- **Adaptive Frame Throttling**: Monitors frame execution time; if system frame rate drops below 24fps, vision detection frequency is dynamically throttled to ensure UI responsiveness remains at 60fps.
+### 2.1 Draw Mode: 2D Hand Air Canvas
+- **Index-Finger Sketching**: Low-latency vector stroke drawing with dynamic glow and velocity-sensitive taper.
+- **Pinch-to-Move**: Grabs and translates committed vector paths across screen space with normalized hand-scale hysteresis.
+- **Fist Eraser**: Geometric intersection engine that selectively removes only the strokes touched by the eraser sphere.
+- **Pointer Dwell Selection**: Index + Middle fingers form a hover pointer; dwelling over any UI control for 1000ms triggers action with a circular progress countdown.
+- **Thumbs-Up Undo**: Immediate rollback of the previous stroke or manipulation action.
+- **Open-Palm 2-Second Clear**: Sustaining an open palm triggers a radial confirmation timer before resetting canvas strokes.
+- **5 Brush Styles**: Neon Glow, Calligraphy (velocity-sensitive width), Rainbow (chromatic sweep), Spray (stochastic particle mist), and Dashed.
+- **Geometric Shape Recognition**: Automatically evaluates finished strokes and snaps rough drawings into lines, circles, rectangles, and triangles.
+- **5 Background Environments**: Mirrored Webcam, Dark Cyber, Whiteboard, Technical Grid, and Slate Chalkboard.
 
-### 2.2 Mathematical Pose Stability & Coordinate Alignment
-- **Rotation-Invariant Extension Calculations**: Rather than checking Y-axis coordinates, finger extension is computed using 3D Euclidean distance ratios from fingertip to wrist versus PIP/MCP to wrist. This ensures reliable recognition regardless of hand tilt, pronation, or rotation.
-- **Palm-Relative Thumb Checking**: Evaluates thumb abduction by measuring Euclidean distance between thumb tip and index MCP relative to hand scale.
-- **Normalized Pinch with Hysteresis**: Pinch distance is normalized against hand scale ($\text{dist}(\text{wrist}, \text{middleMCP})$). Pinch activation engages at $\le 0.32$ and holds until $\ge 0.46$, eliminating boundary jitter.
-- **One Euro (1€) Dual-Axis Filter**: Employs an adaptive low-pass filter with velocity-dependent cutoff frequency. Eliminates microscopic hand tremors during slow, deliberate drawing while preventing latency during rapid strokes.
-- **Exact Crop & Scale Mapping**: Translates raw camera coordinates to screen pixels by matching CSS `object-fit: cover` and horizontal scale mirroring (`scaleX(-1)`), ensuring pixel-level cursor convergence on the user's physical fingertip.
-- **Drop-Frame Grace Buffer**: Maintains an active stroke buffer for 200ms following hand detection loss, preventing broken lines caused by isolated dropped frames.
+---
 
-### 2.3 Interaction Mechanics & Gesture Command Set
+### 2.2 Orb Mode: Two-Hand 3D Holographic System
+A fully 3D interactive environment rendered above the live webcam background via Three.js.
 
-| Mode / Action | Hand Configuration | Description |
+#### Core Energy Spheres
+- **Cyan Sphere**: High-frequency plasma energy core with dynamic outer rim glow and trailing particle emissions.
+- **Magenta Sphere**: Rotating internal geometric patterns with reactive surface displacement and harmonic light.
+- **Golden Sphere**: Deep amber core with soft volumetric particle halo and high luminous intensity.
+- **Dynamic Tension Lines**: Luminous energy lines connecting the three spheres that stretch, modulate color, and glow brighter under physical tension.
+
+#### Two-Hand Gesture Command Set
+
+| Gesture | Hand Pose | 3D Engine Action |
 | :--- | :--- | :--- |
-| **Draw** | Index finger extended; middle, ring, pinky curled | Renders continuous vector splines in selected brush style |
-| **Move** | Thumb and index tips pinched together | Translates selected stroke coordinates across canvas |
-| **Eraser** | Closed fist (all fingers curled into palm) | Real-time collision detection; erases intersecting strokes |
-| **Pointer Hover** | Index and middle fingers extended; others curled | Directs cursor; hovering over UI controls for 1s triggers click |
-| **Undo** | Thumbs up (thumb pointing upward, fingers curled) | Rolls back the most recent canvas action (with cooldown) |
-| **Clear Canvas** | Open palm sustained for 2.0 seconds | Clears entire canvas following radial confirmation progress |
-| **Two-Hand Transform**| Dual-hand pinch on single stroke | Affine scaling and rotation centered on bounding midpoint |
+| **Two-Hand Zoom** | Both palms facing camera | Adjusts camera Z-depth with inertia; hands apart zooms in, hands together zooms out |
+| **Scene Rotation** | Both hands steering horizontally | Rotates the 3D scene azimuthally and elevationally with momentum |
+| **Grab and Move** | Single-hand pinch (Thumb + Index) | Raycasts into 3D space to select nearest sphere and translate it in 3D |
+| **Throw Sphere** | Pinch release while in motion | Imparts hand velocity to sphere with damping and boundary bouncing |
+| **Spawn Sphere** | Both open palms held together | Spawns a new energy sphere between hands; moving hands apart expands its scale |
+| **Dismiss Spheres**| Two-hand forward push toward camera | Disperses active orbs into shockwave particles with energy dissipation |
+| **Expand / Shrink** | Spread / curl fingers on grabbing hand | Dynamically modulates sphere scale between 0.5x and 2.0x |
+| **Merge & Split** | Bring two spheres together / pull apart | Fuses spheres into high-energy composite orb; pulling apart splits back to two |
+| **Reset Scene** | Both fists held together for 0.4s | Smoothly animates camera, rotation, and spheres back to default coordinates |
 
-### 2.4 Hands-Free UI Navigation (Pointer Mode)
-- **Temporal Dwell Selection**: In `POINTER` mode, positioning the cursor over buttons, color chips, or toggles initiates a 1000ms accumulator.
-- **Visual Progress Ring**: A radial SVG-style progress indicator draws dynamically at the cursor position. When complete, the target control triggers programmatically with synthesized audio confirmation.
-- **Proportional Range Slider Control**: Hovering over slider tracks adjusts the value proportionally along the horizontal travel axis.
-
-### 2.5 Multi-Brush Rendering Engine
-- **Neon Brush**: High-intensity outer glow with variable Gaussian blur coupled with an inner high-value core line.
-- **Calligraphy Brush**: Velocity-sensitive line width modulation ($v = \Delta d / \Delta t$). Fast gestures produce delicate tapered terminals; slow movements produce bold strokes.
-- **Rainbow Brush**: Dynamic chromatic cycling along the path trajectory using parameterized HSL color rotation.
-- **Spray Brush**: Density-controlled stochastic particle emission within an radial bounding envelope.
-- **Dashed Cyber Brush**: Geometric dash-array path rendering with synchronized glow envelopes.
-
-### 2.6 Geometric Shape Fitting & Snapping
-When Shape Snapping is enabled, finalized strokes undergo automated polygonal analysis:
-- **Linear Collinearity**: Compares Euclidean endpoint distance to total integrated arc length. If $D_{\text{endpoints}} / L_{\text{path}} > 0.90$, the stroke snaps to a clean line segment.
-- **Centroid Radial Variance (Circles)**: For closed paths ($D_{\text{endpoints}} / L_{\text{path}} < 0.28$), calculates radial standard deviation relative to mean radius. If coefficient of variation is $< 0.18$, the stroke snaps to a parametric circle.
-- **Polygonal Bounding (Rectangles & Triangles)**: Fits bounding perimeter and vertex distribution to snap clean rectangles and triangles.
-
-### 2.7 Canvas Environments
-- **Webcam Mirror**: Real-time mirrored camera stream with translucent drawing overlay.
-- **Dark Mode**: Cyber black canvas (`#070810`) with webcam reassigned to a low-latency Picture-in-Picture display.
-- **Whiteboard Mode**: High-contrast light canvas (`#f5f6fa`).
-- **Grid Environment**: Technical blueprint background with coordinate division markings.
-- **Chalkboard Environment**: Textured slate green canvas (`#15241b`).
-
-### 2.8 Export & Recording Subsystems
-- **Raster Image Export (PNG)**: Produces full-resolution raster outputs with either background inclusion or alpha transparency.
-- **Vector Export (SVG)**: Traverses stored vector path arrays and compiles an independent `.svg` XML file with exact stroke styling and dash parameters.
-- **Timelapse Video Capture (WebM)**: Taps the canvas stream via `canvas.captureStream(30)` and encodes real-time drawing sessions through `MediaRecorder` using VP9/WebM compression.
-
-### 2.9 State Management, History & Persistence
-- **Full History Stack**: Encapsulates all mutations (`ADD_STROKE`, `REMOVE_STROKES`, `MOVE_STROKE`, `TRANSFORM_STROKE`, `SNAP_SHAPE`, `CLEAR_CANVAS`) with forward and reverse delta states for deterministic undo and redo.
-- **Storage Persistence**: Debounced synchronization to `localStorage` maintains work session recovery across page refreshes.
-- **Drawing Gallery**: Internal catalog system enabling artwork storage, thumbnail generation, session retrieval, and deletion.
-
-### 2.10 Assistive Subsystems
-- **Web Speech API**: Integrated voice command engine supporting hands-free activation of actions (`undo`, `redo`, `clear`, `erase`, `draw`, color changes, thickness adjustments).
-- **Web Audio API Parametric Synthesizer**: Programmatic audio cues for button clicks, stroke deletions, undos, and geometric snaps without external sound assets.
-- **Mouse and Touch Fallback**: Automatic failover enabling complete application interaction via traditional pointer events if camera hardware is unavailable.
+#### 5 Submode 3D Environments
+1. **Classic Orbs**: Three interconnected floating energy spheres with tension lines and collision dynamics.
+2. **Planet Mode**: Miniature solar system with a central luminous Sun, elliptical orbital paths, and orbiting celestial bodies (Mercury, Earth, Mars, Jupiter, Saturn with ring system).
+3. **Galaxy Mode**: Spiral galaxy simulation consisting of 8,000 star particles (`THREE.Points`) following logarithmic spiral branches with dense galactic core and dust clouds.
+4. **Atom Mode**: Scientific atomic model featuring a central nucleus cluster surrounded by three tilted elliptical electron tracks with fast-orbiting electron particles.
+5. **Shape Morph Mode**: Parametric geometry that smoothly interpolates particle vertex positions between Sphere, Cube, Torus, and Pyramid without mesh replacement.
+6. **Fidget Mode**: Calming, zen-inspired space with soft pastel floating spheres, gentle physics, and minimal distraction.
 
 ---
 
-## 3. Keyboard Shortcuts
+## 3. Visual Effects & Post-Processing
 
-| Shortcut | Function |
+- **UnrealBloomPass**: Multi-stage HDR bloom for neon energy glow, with configurable threshold, strength, and radius.
+- **Three Configurable Quality Tiers**:
+  - **High**: UnrealBloomPass enabled (strength: 1.35), full device pixel ratio (up to 2.0x), 700 ambient particles.
+  - **Balanced**: Standard bloom (strength: 0.85), DPR capped at 1.5x, 450 ambient particles.
+  - **Performance**: Bloom disabled, DPR 1.0x, 200 ambient particles (optimized for integrated GPUs and mobile).
+- **Holographic Hand Skeleton**: Faint 2D overlay displaying tracked hand bones, joints, fingertip targeting reticles, and active pinch halos.
+- **Shockwave Generator**: Animated expanding torus rings generated during spawn, collision, merge, split, and dismiss actions.
+- **Particle Dynamics**: Floating ambient particles with organic Brownian motion and subtle drift toward active fingertips.
+
+---
+
+## 4. Audio Synthesis Subsystem
+
+Powered by the browser-native Web Audio API without external audio files:
+- **Ambient Drone**: Continuous warm low-frequency drone (55Hz A1) modulated by an LFO.
+- **Procedural Sound FX**:
+  - Spawn: Ascending major triad arpeggio (440Hz – 880Hz).
+  - Collision: Resonant crystal ping with decay.
+  - Merge: Sub-bass swell and harmonic fusion sweep.
+  - Split: Spatial frequency separation sweep.
+  - Zoom Pitch: Real-time frequency sweep tracking palm separation distance.
+  - Dismiss: Exponential downward energy whoosh.
+  - Shape Morph: Polyphonic chord sweep.
+- **Dedicated Controls**: Sound mute toggle (<kbd>M</kbd>) and master volume control.
+
+---
+
+## 5. Export & Persistence Systems
+
+- **Draw Mode Export**:
+  - Raster PNG (with background or alpha transparency).
+  - Scalable Vector Graphics (SVG) export.
+  - 2D Canvas WebM timelapse recording via `canvas.captureStream(30)`.
+- **Orb Mode 3D Export**:
+  - 3D Screenshot: Composites webcam frame and transparent 3D WebGL canvas into a high-resolution PNG.
+  - 3D Timelapse Recording: Records 30fps WebM video of the 3D scene using `MediaRecorder`.
+- **Session Persistence**: Debounced `localStorage` autosave preserves canvas state across page reloads.
+- **Drawing Gallery**: Local catalog storing artwork snapshots, dates, and stroke data.
+
+---
+
+## 6. Mouse and Touch Fallback
+
+When webcam hardware is unavailable, the application automatically transitions to pointer input:
+- **Draw Mode**: Click and drag to draw, erase, or manipulate strokes.
+- **Orb Mode**:
+  - Left-Click and Drag: Select and manipulate 3D spheres.
+  - Background Drag: Orbit and rotate 3D scene.
+  - Mouse Wheel: Camera zoom in / out.
+  - UI Buttons: Trigger spawn, dismiss, reset, and submode changes.
+
+---
+
+## 7. Keyboard Shortcuts
+
+| Shortcut | Action |
 | :--- | :--- |
 | <kbd>Z</kbd> | Undo last action |
 | <kbd>Y</kbd> or <kbd>Shift</kbd> + <kbd>Z</kbd> | Redo action |
-| <kbd>C</kbd> | Clear canvas |
+| <kbd>C</kbd> | Clear canvas (Draw Mode) |
 | <kbd>S</kbd> | Open Export / Save Dialog |
 | <kbd>E</kbd> | Toggle between Eraser and Draw tools |
 | <kbd>H</kbd> | Toggle control panel collapse |
@@ -125,23 +155,22 @@ When Shape Snapping is enabled, finalized strokes undergo automated polygonal an
 
 ---
 
-## 4. Technical Specifications
+## 8. Technical Specifications
 
 - **Vision Runtime**: Google MediaPipe Tasks Vision (`@mediapipe/tasks-vision` 0.10.14)
 - **Model**: `hand_landmarker.task` (`float16` quantization)
-- **Rendering**: Dual-layer HTML5 Canvas (`2D` context, Retina `devicePixelRatio` scaling)
-- **Styling**: Vanilla CSS3 (Custom properties, CSS Grid, Flexbox, backdrop filter blur)
-- **Fonts**: Space Mono, Orbitron (Google Fonts)
-- **Audio Engine**: Web Audio API (`AudioContext`, OscillatorNode, GainNode)
+- **3D Graphics Engine**: Three.js r160 (`three.module.js`) via ES Module import map
+- **Post-Processing**: Three.js `EffectComposer`, `RenderPass`, `UnrealBloomPass`
+- **Audio Engine**: Web Audio API (`AudioContext`, OscillatorNode, BiquadFilterNode, GainNode)
 - **Speech Engine**: Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`)
-- **Video Capture**: MediaStream Recording API (`MediaRecorder`)
-- **Build Requirements**: None (Pure ES modules, browser-native execution)
+- **Video Capture**: MediaStream Recording API (`MediaRecorder` with VP9/WebM compression)
+- **Build Requirements**: None (Pure browser-native ES Modules)
 
 ---
 
-## 5. Local Setup & Execution
+## 9. Local Deployment
 
-Because camera permissions require a secure context, the application must be served over `http://localhost` or `https://`.
+Because camera permissions require a secure context, serve the application over `http://localhost` or `https://`:
 
 ### Using Python 3:
 ```bash
@@ -156,34 +185,31 @@ npx serve .
 
 ---
 
-## 6. Deployment to GitHub Pages
+## 10. Deployment to GitHub Pages
 
-The project is structured for immediate deployment on GitHub Pages:
 1. Push repository changes to the `main` branch.
-2. In your GitHub repository, navigate to **Settings** > **Pages**.
+2. In the GitHub repository, open **Settings** > **Pages**.
 3. Under **Branch**, select `main` and root directory `/`, then click **Save**.
-4. The application will be accessible at `https://<username>.github.io/<repository>/`.
+4. The live application will be available at `https://<username>.github.io/<repository>/`.
 
 ---
 
-## 7. Troubleshooting & Diagnostics
+## 11. Troubleshooting & Diagnostics
 
-### WebGL / Hardware Acceleration
-If the browser indicates hardware acceleration is disabled or drops frame rate:
-1. Open Chrome settings: `chrome://settings/system`.
-2. Enable **Use graphics acceleration when available**.
-3. Relaunch the browser and close extraneous GPU-intensive tabs.
-4. *AirDraw automatically transitions to CPU execution if WebGL context creation fails.*
+### WebGL Hardware Acceleration
+1. Navigate to `chrome://settings/system`.
+2. Ensure **Use graphics acceleration when available** is enabled.
+3. Relaunch Chrome and close GPU-intensive browser tabs.
+4. *AirDraw automatically falls back to CPU execution if WebGL context allocation fails.*
 
 ### Camera Permissions
-If camera initialization fails:
-1. Verify the site is loaded over `https://` or `http://localhost` (browsers disallow camera access on `file://`).
+1. Verify the site is hosted on `https://` or `http://localhost` (browsers restrict camera access on `file://`).
 2. Click the camera settings icon in the browser address bar and verify permission is set to **Allow**.
-3. If camera access remains unavailable, select **Use Mouse / Touch** to continue using all tools via pointer input.
+3. If camera hardware is unavailable, select **Use Mouse / Touch** to continue using all tools via pointer input.
 
 ---
 
-## 8. Author & License
+## 12. Author & License
 
 - **Author**: Prathap ([GitHub](https://github.com/Prathap2349))
 - **License**: MIT License
